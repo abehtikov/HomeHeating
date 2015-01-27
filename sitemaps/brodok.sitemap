@@ -27,7 +27,7 @@ sitemap brodok label="Main Menu"
 		}
 	}
 	
-	Frame label="Weather" {
+	Frame label="Погода в Бродке" {
 		Text item=Pi_Temperature valuecolor=[Weather_LastUpdate=="Uninitialized"="lightgray",Weather_LastUpdate>90="lightgray",>25="orange",>15="green",>5="orange",<=5="blue"] {
 			Frame {
 				Text item=Weather_Temp_Max valuecolor=[>25="orange",>15="green",>5="orange",<=5="blue"]
@@ -35,10 +35,14 @@ sitemap brodok label="Main Menu"
 				Text item=Weather_LastUpdate visibility=[Weather_LastUpdate>30] valuecolor=[Weather_LastUpdate>120="orange", Weather_LastUpdate>300="red"]
 			}
 		}
+		Text item=Temperature
+		Text item=Humidity
 	}
 	
 	Frame label="Текущая дата" {
 		Text item=Date
 		Text item=Sunrise_Time
+		Text item=CivilDawn_Time
+		Text item=CivilDusk_Time
 	}
 }
