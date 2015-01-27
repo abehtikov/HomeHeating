@@ -94,6 +94,11 @@ Number Weather_Temp_Min 		"Todays Minimum [%.1f °C]"		<temperature> (Weather_Ch
 Number Weather_Chart_Period		"Chart Period"
 DateTime Weather_LastUpdate		"Last Update [%1$ta %1$tR]"	<clock>
 
+
+Number   Temperature   	"Температура воздуха [%d °C]"		<temperature>	(gWeather)	{weather="locationId=home, type=temperature, property=current"}
+Number   Humidity      	"Влажность [%d %%]"       							(gWeather)	{weather="locationId=home, type=athmosphere, property=humidity"}
+
+
 /* NTP binding demo item */
 DateTime		Date			"Date [%1$tA, %1$td.%1$tm.%1$tY]"	<calendar>	(gStatus)	{ ntp="Europe/Minsk:ru_RU" } 	
 // shows the sunrise
