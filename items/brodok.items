@@ -104,10 +104,10 @@ DateTime		Date			"Date [%1$tA, %1$td.%1$tm.%1$tY]"	<calendar>	(gStatus)	{ ntp="E
 // shows the sunrise
 DateTime Sunrise_Time  			"Восход [%1$tH:%1$tM]"  			<clock>		(gStatus)	/*{astro="type=SUNRISE_TIME"}  v1.6 binding only:*/ {astro="planet=sun, type=rise, property=start"}
 
-/*
+
 DateTime CivilDawn_Time  		"Заря [%1$tH:%1$tM]" 				<clock>		(gStatus)	{astro="planet=sun, type=civilDawn, property=start"}
 DateTime CivilDusk_Time  		"Гражд. сумерки [%1$tH:%1$tM]" 		<clock>		(gStatus)	{astro="planet=sun, type=civilDusk, property=end"}
-*/
+
 
 /* Demo items */
 Switch DemoSwitch				"Switch"
