@@ -97,7 +97,7 @@ DateTime Weather_LastUpdate		"Last Update [%1$ta %1$tR]"	<clock>
 /* NTP binding demo item */
 DateTime		Date			"Date [%1$tA, %1$td.%1$tm.%1$tY]"	<calendar>	(gStatus)	{ ntp="Europe/Minsk:ru_RU" } 	
 // shows the sunrise
-DateTime Sunrise_Time  			"Восход [%1$tH:%1$tM]"  			<clock>		(gStatus)	{astro="type=SUNRISE_TIME"} // v1.6 binding only: {astro="planet=sun, type=rise, property=start"}
+DateTime Sunrise_Time  			"Восход [%1$tH:%1$tM]"  			<clock>		(gStatus)	/*{astro="type=SUNRISE_TIME"}  v1.6 binding only:*/ {astro="planet=sun, type=rise, property=start"}
 
 /*
 DateTime CivilDawn_Time  		"Заря [%1$tH:%1$tM]" 				<clock>		(gStatus)	{astro="planet=sun, type=civilDawn, property=start"}
