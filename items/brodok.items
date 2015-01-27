@@ -1,0 +1,119 @@
+Group All
+Group gWeather 	(All)
+Group gStatus 	(All)
+Group gPresense	(All)
+Group Heating	(All)
+
+/* active groups */
+//Group:Switch:OR(ON, OFF) 		Heating 	"No. of Active Heatings [(%d)]" 	<heating> 			(All)
+Group:Number:AVG 				TempSensor	"Avg. Room Temperature [%.1f °C]" 	<temperature>	(gStatus)
+
+Group:Switch:OR(ON, OFF) 		WarmFloorValve	"Warm floor loops [(%d)]"			(All)
+Group:Switch:OR(ON, OFF)		ThermoValve		"Thermo driven valves [(%d)]"		(gStatus)
+Group:Number:SUM				ValveToggleCycle 	"Total valve toggle cycles [(%d)]"	(gStatus)
+Group:Switch:OR(ON, OFF)		RelaysGPIO		"Реле управления котлом и гребенкой [%d]"
+
+Group gBoiler		(gStatus)
+Group gSetPoints	(gStatus)
+
+/* Test Modbus OVEN PLC */
+/*
+Group Modbus	(All)
+Number OvenStatus_MSB		"Register 0. status [(%d)]"			(Modbus)	{modbus="oven:0"}
+Number OvenStatus_LSB		"Register 2. Counter [(%d)]"		(Modbus)	{modbus="oven:2"}
+Switch OvenSwitch 			"Oven switch"						(Modbus)	{modbus="oven:1"}
+*/
+
+
+/* Lights */
+
+/* Heating */
+
+// Towel heater valve is normally open. Switch position:ON is a default state. By default: OFF
+Switch Heating_Valve_Towel_Warmer	 	"Towel warmer switch" 			<heating>	(Heating, ThermoValve, RelaysGPIO)	{gpio="pin:17 activelow:no"} // Relay #1
+Number HV_Towel_Warmer_Toggle_Counter	"Towel warmer toggles [(%d)]"				(ValveToggleCycle)
+
+// Warm floor valves are normally closed. Switch position=ON -> opens the valve (3 min. delay) and it's heating loop
+Switch Heating_Valve_Kitchen 	"Kitchen" 		<heating>	(Heating, WarmFloorValve, ThermoValve, RelaysGPIO)	{gpio="pin:27 activelow:yes"} // Relay #2
+Number HV_Kitchen_Toggle_Counter	"Kitchen valve toggles [(%d)]"				(ValveToggleCycle)
+
+Switch Heating_Valve_Bath_floor	"Bath Floor" 	<heating>	(Heating, WarmFloorValve, ThermoValve, RelaysGPIO)	{gpio="pin:22 activelow:yes"} // Relay #3 
+Number HV_Bath_Floor_Toggle_Counter	"Bath floor valve toggles [(%d)]"				(ValveToggleCycle)
+
+Switch Heating_Valve_Corridor 	"Corridor" 		<heating>	(Heating, WarmFloorValve, ThermoValve, RelaysGPIO)	{gpio="pin:23 activelow:yes"} // Relay #4
+Number HV_Corridor_Toggle_Counter	"Towel warmer toggles [(%d)]"				(ValveToggleCycle)
+
+/* This mode is secondary and controlled by room thermostat. Boiler heating supply temperature should be set to 35-45 C, 
+ * to meet warm floor heating requirements. By default: OFF
+ */
+Switch Heating_Boiler_LO		"Low temperature boiler mode" 		(gBoiler)		{gpio="pin:10 activelow:no"} // via optocoupler to boiler RP switch 
+
+/* This mode is primary and is controlled by openhab server. In this mode only room radiators are expected to operate,
+ * and any warm floor heating valves should be closed. The temperature of heating medium is set-up manually in the boiler's menu.
+ * Default state: OFF
+ */
+Switch Heating_Boiler_HI		"HI temperature boiler mode"		(gBoiler, RelaysGPIO)		{gpio="pin:7 activelow:no"} // Optocoupler to boiler WZ switch
+
+// used to open/close all warm floor valves when boiler is in LO mode. If controller is failed, the default relay is closed (NC-COM are used)
+// Default state: ON
+/*
+Switch Heating_WF_Valves_LO_OFF		"230V Warm floor valves"		(Heating, WarmFloorValve, RelaysGPIO) 	{gpio="pin:27 activelow:no"}	// Relay #2
+*/
+
+/* 3 valid modes: OFF, LO, HI */
+String Heating_Boiler_Mode		"Boiler mode: [%s]"				(gBoiler)		{mqtt="<[cloud-mqtt:brodok/heating/boiler/mode:command:REGEX((HI|LO|Off))]"}
+/* Flow rate of heat medium. Depends on the number of open heating valves */
+Number 	Heating_FlowRate		"Total flow rate of heat medium [%.1f l/min]"		(gBoiler)
+/* Boiler power depends on boiler mode and flow rate */
+Number	Heating_Power_Estimate	"Estimated boiler power [%.1f kW]"					(gBoiler)
+/* Boiler's delivery water temperature */
+Number 	Heating_Boiler_Delivery_Water_Temp	"Delivery water temp. [%.1f °C]"		<temperature>	(gBoiler)
+/* Boiler's return water temperature */
+Number 	Heating_Boiler_Return_Water_Temp	"Return water temp. [%.1f °C]"			<temperature>	(gBoiler)
+
+/* Indoor Temperatures */
+Number TempSensor_Corridor	 	"Прихожая [%.1f °C]"	<temperature>	(TempSensor)
+Number TempSensor_Kitchen 		"Кухня [%.1f °C]"		<temperature>	(TempSensor)
+Number TempSensor_Bedroom 		"Спальня [%.1f °C]"		<temperature>	(TempSensor)
+
+/* Warm floor temperature set points */
+Number TWF_Kitchen_SP			"Кухня [%.1f]" 			<temperature> 	(gSetPoints)
+Number TWF_Corridor_SP			"Прихожая [%.1f]" 		<temperature> 	(gSetPoints)
+Number T_Bedroom_SP				"Спальня [%.1f]"		<temperature>	(gSetPoints)
+
+
+/* Movement sensor */
+Contact Corridor_Presense		"Обнаружено присутствие [MAP(ru.map):%s]"				(gPresense)
+DateTime LastPresenseDate		"Последняя дата присутствия [%1$ta %1$tR]"	<calendar>		(gPresense)
+
+Group Weather_Chart													(gWeather)
+
+Number Pi_Temperature 			"pi CPU temperature [%.1f C]" 	<temperature> (Weather_Chart)  {mqtt="<[alvitex-local:home/brodok/pi/temp:state:default]"}
+Number Weather_Temp_Max 		"Todays Maximum [%.1f °C]"		<temperature> (Weather_Chart)
+Number Weather_Temp_Min 		"Todays Minimum [%.1f °C]"		<temperature> (Weather_Chart)
+Number Weather_Chart_Period		"Chart Period"
+DateTime Weather_LastUpdate		"Last Update [%1$ta %1$tR]"	<clock>
+
+/* NTP binding demo item */
+DateTime		Date			"Date [%1$tA, %1$td.%1$tm.%1$tY]"	<calendar>	(gStatus)	{ ntp="Europe/Minsk:ru_RU" } 	
+// shows the sunrise
+DateTime Sunrise_Time  			"Восход [%1$tH:%1$tM]"  			<clock>		(gStatus)	{astro="type=SUNRISE_TIME"} // v1.6 binding only: {astro="planet=sun, type=rise, property=start"}
+
+/*
+DateTime CivilDawn_Time  		"Заря [%1$tH:%1$tM]" 				<clock>		(gStatus)	{astro="planet=sun, type=civilDawn, property=start"}
+DateTime CivilDusk_Time  		"Гражд. сумерки [%1$tH:%1$tM]" 		<clock>		(gStatus)	{astro="planet=sun, type=civilDusk, property=end"}
+*/
+
+/* Demo items */
+Switch DemoSwitch				"Switch"
+Dimmer DimmedLight				"Dimmer [%d %%]"		<slider>
+Color  RGBLight					"RGB Light"				<slider>
+Rollershutter DemoShutter	 	"Roller Shutter"
+Dimmer DemoBlinds			 	"Blinds [%d %%]"		<rollershutter>
+Number Scene_General			"Scene"					<sofa>
+Number Radio_Station			"Radio"					<network>
+Dimmer Volume 					"Volume [%.1f %%]"
+Number Temperature_Setpoint		"Temperature [%.1f °C]" <temperature>
+
+String UnknownDevices    "Unknown Devices in Range: [%s]" { bluetooth="?" }
+Number NoOfPairedDevices "Paired Devices in Range: [%d]"  { bluetooth="!" }
