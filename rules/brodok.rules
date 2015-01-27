@@ -1,0 +1,83 @@
+import org.openhab.core.library.types.*
+import org.openhab.core.persistence.*
+import org.openhab.model.script.actions.*
+//import static java.util.Collections.*
+
+/*
+var Number counter = 1
+var Timer timer = null
+*/
+
+var String Boiler_PrevState
+
+/**
+ * This rule switches off warm floor valves when boiler is about to switch to HI temp. mode
+ */
+rule "Boiler HI mode"
+ 	when
+ 		Item Heating_Boiler_HI received command ON
+ 	then
+ 		WarmFloorValve.sendCommand(OFF)
+end
+
+rule "Boiler LO mode"
+	when
+ 		Item Heating_Boiler_LO received command
+ 	then
+ 		if (receivedCommand == ON) {
+ 			// open warm floor manifold valves
+ 			if (Heating_Boiler_HI.state == OFF) {
+ 				WarmFloorValve.sendCommand(ON)
+	 		} else {
+	 			logInfo("brodok.rules", "Cannot switch to LO mode, because boiler is running HI temperature mode.")
+	 		}	
+	 	} else {
+	 		// close warm floor manifold valves
+	 		WarmFloorValve.sendCommand(OFF)
+	 	}
+ end
+
+/*
+ * Rule 1
+ */
+rule "Boiler Master mode change"
+when
+	Item Heating_Boiler_Mode received command
+then
+	var requested_mode = receivedCommand
+	logInfo("brodok.rules", "Received command: " + requested_mode + ". previousState: " + Boiler_PrevState)
+	
+	// avoid processing duplicate commands
+	if (requested_mode != Boiler_PrevState) {
+	
+		if (requested_mode == "Off") {
+			sendCommand(Heating_Boiler_HI, OFF)
+			sendCommand(Heating_Boiler_LO, OFF)		
+		} else if (requested_mode == "HI") {
+			sendCommand(Heating_Boiler_HI, ON)
+			sendCommand(Heating_Boiler_LO, OFF)		
+		} else if (requested_mode == "LO") {
+			sendCommand(Heating_Boiler_HI, OFF)
+			sendCommand(Heating_Boiler_LO, ON)
+		} else {
+			logInfo("brodok.rules", "Ignore command: " + requested_mode)
+		}
+		
+	}
+end
+
+rule "Boiler status update"
+when
+	Item Heating_Boiler_Mode changed
+then
+	var s = Heating_Boiler_Mode.state
+	var msg = "Boiler status update attempt from [" + previousState + "] to [" + s + "]"
+	logInfo("brodok.rules", msg)
+	
+	if ( !((s == "Off") || (s == "LO") || (s == "HI")) ) {
+		// correct value for GUI
+		Heating_Boiler_Mode.state = previousState		
+	}
+	// preserve value to filter out duplicate command (ON-ON or HI-HI) in upper rule 1
+	Boiler_PrevState = Heating_Boiler_Mode.state.toString()
+end

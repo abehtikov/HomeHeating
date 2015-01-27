@@ -1,0 +1,44 @@
+sitemap brodok label="Main Menu"
+{
+	Frame label="Heating" {
+		Group item=Heating label="All Heating" icon="firstfloor"
+		Group item=gBoiler label="Boiler" icon="groundfloor"
+		Group item=gPresense label="Presense" icon="garden" 
+	}
+	
+	/*
+	Frame label="OVEN PLC test" {
+		Group item=Modbus label="Состояние и включатель"
+	}
+	*/
+	
+	Frame label="Boiler mode" {
+		Text item=Heating_Boiler_Mode label="Текущий режим работы котла [%s]  "
+		Selection item=Heating_Boiler_Mode label="Изменить режим" mappings=[Off="Выкл.", HI="Только радиаторы", LO="Теплый пол + радиаторы"]	
+		
+	}
+	
+	Frame label="Температура помещения" {
+		Group item=TempSensor label="Датчики температуры помещеня" icon="temperature"
+		Group item=gSetPoints label="Уставки температур" icon="cellar"	{
+			Setpoint item=TWF_Kitchen_SP minValue=18 maxValue=23 step=1.0
+			Setpoint item=TWF_Corridor_SP minValue=18 maxValue=23 step=1.0
+			Setpoint item=T_Bedroom_SP minValue=18 maxValue=23 step=1.0
+		}
+	}
+	
+	Frame label="Weather" {
+		Text item=Pi_Temperature valuecolor=[Weather_LastUpdate=="Uninitialized"="lightgray",Weather_LastUpdate>90="lightgray",>25="orange",>15="green",>5="orange",<=5="blue"] {
+			Frame {
+				Text item=Weather_Temp_Max valuecolor=[>25="orange",>15="green",>5="orange",<=5="blue"]
+				Text item=Weather_Temp_Min valuecolor=[>25="orange",>15="green",>5="orange",<=5="blue"]
+				Text item=Weather_LastUpdate visibility=[Weather_LastUpdate>30] valuecolor=[Weather_LastUpdate>120="orange", Weather_LastUpdate>300="red"]
+			}
+		}
+	}
+	
+	Frame label="Текущая дата" {
+		Text item=Date
+		Text item=Sunrise_Time
+	}
+}
