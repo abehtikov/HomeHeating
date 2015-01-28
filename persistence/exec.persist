@@ -1,6 +1,9 @@
 // persistence strategies have a name and a definition and are referred to in the "Items" section
 Strategies {
 	everyMinute   : "0 * * * * ?"
+	everyNoon     : "0 12 * * * ?"
+
+        default = everyChange, restoreOnStartup
 }
 
 /*
