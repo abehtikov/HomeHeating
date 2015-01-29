@@ -3,10 +3,8 @@ import org.openhab.core.persistence.*
 import org.openhab.model.script.actions.*
 //import static java.util.Collections.*
 
-/*
-var Number counter = 1
+var Number processUpdate = 0
 var Timer timer = null
-*/
 
 var String Boiler_PrevState
 
@@ -27,6 +25,7 @@ rule "Boiler LO mode"
  		if (receivedCommand == ON) {
  			// open warm floor manifold valves
  			if (Heating_Boiler_HI.state == OFF) {
+ 				
  				WarmFloorValve.sendCommand(ON)
 	 		} else {
 	 			logInfo("brodok.rules", "Cannot switch to LO mode, because boiler is running HI temperature mode.")
@@ -52,13 +51,20 @@ then
 	
 		if (requested_mode == "Off") {
 			sendCommand(Heating_Boiler_HI, OFF)
-			sendCommand(Heating_Boiler_LO, OFF)		
+			sendCommand(Heating_Boiler_LO, OFF)	
+				
 		} else if (requested_mode == "HI") {
 			sendCommand(Heating_Boiler_HI, ON)
 			sendCommand(Heating_Boiler_LO, OFF)		
+			
 		} else if (requested_mode == "LO") {
+			// when switching from HI to LO, give the temperature 5min to cool down before opening the valves 
+			if (Boiler_PrevState == "HI") {
+				logDebug("boiler.mode", "5 min. delay before opening warm floor valves")
+			}
 			sendCommand(Heating_Boiler_HI, OFF)
 			sendCommand(Heating_Boiler_LO, ON)
+			
 		} else {
 			logInfo("brodok.rules", "Ignore command: " + requested_mode)
 		}
@@ -81,3 +87,96 @@ then
 	// preserve value to filter out duplicate command (ON-ON or HI-HI) in upper rule 1
 	Boiler_PrevState = Heating_Boiler_Mode.state.toString()
 end
+
+rule "Calculate current heating power demand"
+when
+	Item HeatLoadFactor changed or
+	Item HeatCompensation changed or
+	Item Temperature changed
+then
+	var lf = (HeatLoadFactor.state as DecimalType).doubleValue
+	var ambTemp 
+	if (Temperature.state instanceof DecimalType) {
+		ambTemp = (Temperature.state as DecimalType).doubleValue
+	} else {
+		ambTemp = 0
+	}
+	
+	var roomTempAvg = (TempSensor.state as DecimalType).doubleValue
+	var hc = (HeatCompensation.state as DecimalType).doubleValue
+	var demand = (roomTempAvg - ambTemp) * lf - hc
+
+	// Maximum required heat demand is 3kW (@-20C ambient temperature)
+	if (demand > 3000) {
+		demand = 3000
+	}
+	logDebug("brodok.rules", "calculated power demand kW: " + demand/1000)
+	if (processUpdate == 1) {
+		//postUpdate(HeatPowerDemand_Current, (demand/1000))	
+		//postUpdate(PowerDemandLastUpdate, new DateTimeType())
+		HeatPowerDemand_Current.postUpdate(demand/1000)
+		PowerDemandLastUpdate.postUpdate(new DateTimeType())
+	}
+end
+
+rule "Startup"
+when
+	System started
+then
+	postUpdate(ActiveBoilerHeatingElements, 3)
+	postUpdate(TempSensor_Corridor, 20.0)
+	postUpdate(TempSensor_Kitchen, 21.0)
+	postUpdate(TempSensor_Bedroom, 19.0)
+	sendCommand(HeatCompensation, 600)
+	sendCommand(HeatLoadFactor, 110)
+	logDebug("brodok.rules", "Init completed")
+	processUpdate = 1
+end	
+
+rule "Convert Atm. Pressure units"
+when
+	Item AtmPressure_mbar changed
+then
+	var mbar = (AtmPressure_mbar.state as DecimalType).doubleValue
+	var mmHg = mbar * 0.75006375541921
+	postUpdate(AtmPressure_mmHg, mmHg.intValue)
+end
+
+rule "Heating Power demand persist to Google"
+when
+	Time is noon // recalculate power demand once a day
+	//Time cron "0 */5 * * * ?" // every 5 min.
+then
+	// TODO calculate daily average ambient temp for the last 24h.
+	//var dailyAvgAmbientTemp = (Temperature.state as DecimalType).doubleValue
+	var dailyAvgAmbientTemp = -2.0
+	
+	var roomTempAvg = (TempSensor.state as DecimalType).doubleValue
+	var hc = (HeatCompensation.state as DecimalType).intValue
+	var lf = (HeatLoadFactor.state as DecimalType).intValue
+	
+	var demand = (roomTempAvg - dailyAvgAmbientTemp) * lf - hc
+
+	// Maximum required heat demand is 3kW (@-20C ambient temperature)
+	if (demand > 3000) {
+		demand = 3000
+	}
+	demand = demand / 1000 // in kW
+	logDebug("brodok.rules", "calculated daily heating power demand kW: " + demand)
+	postUpdate(HeatPowerDemand_DailyAvg, demand)
+	
+	// number of active heating elements of the boiler
+	var boilerPower = (ActiveBoilerHeatingElements as DecimalType).intValue
+	
+	//var curlCommand = String::format("echo DailyAverageDemand: %1$f kW", demand)
+	
+	var curlCommand = String::format(
+		// windows specific call
+		"cmd.exe /c curl -k \"%1$s?DATE=%%date%%&TEMP=%3$.2f&FACTOR=%4$d\"", 
+		GoogleScriptURL.state, new java.util.Date(), dailyAvgAmbientTemp, lf
+		)
+	//executeCommandLine("cmd.exe /c echo \"123\"");
+	executeCommandLine(curlCommand);
+end
+
+

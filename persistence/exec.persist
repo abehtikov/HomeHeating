@@ -3,7 +3,7 @@ Strategies {
 	everyMinute   : "0 * * * * ?"
 	everyNoon     : "0 12 * * * ?"
 
-        default = everyChange, restoreOnStartup
+	default = everyChange, restoreOnStartup
 }
 
 /*

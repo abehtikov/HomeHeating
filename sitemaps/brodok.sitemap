@@ -4,6 +4,17 @@ sitemap brodok label="Main Menu"
 		Group item=Heating label="All Heating" icon="firstfloor"
 		Group item=gBoiler label="Boiler" icon="groundfloor"
 		Group item=gPresense label="Presense" icon="garden" 
+		Group item=gHeatingEQ label="Heat Power Demand" icon="pie" {
+			Setpoint item=HeatLoadFactor minValue=90 maxValue=125 step=5.0
+			Setpoint item=HeatCompensation minValue=300 maxValue=800 step=100
+			Setpoint item=ActiveBoilerHeatingElements minValue=1 maxValue=6 step=1
+			Text item=TempSensor
+			Text item=Temperature
+			Text item=HeatPowerDemand_Current
+			Text item=PowerDemandLastUpdate
+			Text item=HeatPowerDemand_DailyAvg
+			Text item=GoogleScriptURL
+		}
 	}
 	
 	/*
@@ -37,6 +48,7 @@ sitemap brodok label="Main Menu"
 		}
 		Text item=Temperature
 		Text item=Humidity
+		Text item=AtmPressure_mmHg
 	}
 	
 	Frame label="Текущая дата" {

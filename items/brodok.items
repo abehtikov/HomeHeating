@@ -94,10 +94,26 @@ Number Weather_Temp_Min 		"Todays Minimum [%.1f °C]"		<temperature> (Weather_Ch
 Number Weather_Chart_Period		"Chart Period"
 DateTime Weather_LastUpdate		"Last Update [%1$ta %1$tR]"	<clock>
 
+/* Heating load calculation variables */
+Group gHeatingEQ
+/* Power demand is calculated daily based on ambient temperature, required inside temp.
+ * and heat load factor of the building (which is constant). It also takes into account
+ * heat compensation (in Watts) by humans and electric devices like fridge, stove, computer, lights etc.
+ */
+Number HeatPowerDemand_Current	"Current heat power demand [%.2f kW]"	(gHeatingEQ)
+Number HeatPowerDemand_DailyAvg	"Daily heat power demand [%.2f kW]"	(gHeatingEQ)
+Number HeatLoadFactor		"Heating load factor [%d W/degC]"	(gHeatingEQ)
+Number HeatCompensation		"Heat compensation [%d W]"			(gHeatingEQ)
+// Persistable
+Number ActiveBoilerHeatingElements	"Boiler's active heating elements [%d]"		(gBoiler, gHeatingEQ)
+// expression for exec persistence
+String GoogleScriptURL "Spreadsheet update url: [%s]"							(gHeatingEQ) {mqtt="<[cloud-mqtt:brodok/heating/google-script-url:state:default]"}
+DateTime PowerDemandLastUpdate	"Current demand last update: [%1$td.%1$tm.%1$tY  %1$tH:%1$tM]"	(gHeatingEQ)
 
-Number   Temperature   	"Температура воздуха [%d °C]"		<temperature>	(gWeather)	{weather="locationId=home, type=temperature, property=current"}
-Number   Humidity      	"Влажность [%d %%]"       							(gWeather)	{weather="locationId=home, type=athmosphere, property=humidity"}
-
+Number 	Temperature   	"Температура воздуха [%d °C]"		<temperature>	(gWeather, gHeatingEQ)	{weather="locationId=home, type=temperature, property=current"}
+Number	Humidity      	"Влажность [%d %%]"       							(gWeather)	{weather="locationId=home, type=athmosphere, property=humidity"}
+Number	AtmPressure_mbar		"Pressure [%.2f mbar]"		(gWeather)		{weather="locationId=home, type=athmosphere, property=pressure"}
+Number	AtmPressure_mmHg	"Атмосферное давление [%d mmHg]" (gWeather)
 
 /* NTP binding demo item */
 DateTime		Date			"Date [%1$tA, %1$td.%1$tm.%1$tY]"	<calendar>	(gStatus)	{ ntp="Europe/Minsk:ru_RU" } 	
