@@ -1,0 +1,16 @@
+#!/bin/bash
+
+TEMPE=$(cat /sys/class/thermal/thermal_zone0/temp)
+T_DEG=`echo "scale=2;$TEMPE/1000" | bc`
+#MSG=`echo CPU temp $(($TEMPE/1000)) C`
+MSG=`echo CPU temp $T_DEG C`
+
+HOST_ALVITEX=86.57.163.78
+#HOST=192.168.51.34
+HOST_CLOUD=m20.cloudmqtt.com
+TOPIC=brodok/heating/pi/cpu_temp
+
+echo $MSG
+#mosquitto_pub -h $HOST_ALVITEX -t $TOPIC -m "$T_DEG"
+mosquitto_pub -d -h m20.cloudmqtt.com -p 10350 -u pi -P pi -t $TOPIC -m "$T_DEG"
+

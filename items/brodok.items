@@ -88,7 +88,7 @@ DateTime LastPresenseDate		"Последняя дата присутствия [
 
 Group Weather_Chart													(gWeather)
 
-Number Pi_Temperature 			"pi CPU temperature [%.1f C]" 	<temperature> (Weather_Chart)  {mqtt="<[alvitex-local:home/brodok/pi/temp:state:default]"}
+Number Pi_Temperature 			"pi CPU temperature [%.1f C]" 	<temperature> (Weather_Chart)  {mqtt="<[cloud-mqtt:brodok/heating/pi/cpu_temp:state:default]"}
 Number Weather_Temp_Max 		"Todays Maximum [%.1f °C]"		<temperature> (Weather_Chart)
 Number Weather_Temp_Min 		"Todays Minimum [%.1f °C]"		<temperature> (Weather_Chart)
 Number Weather_Chart_Period		"Chart Period"
