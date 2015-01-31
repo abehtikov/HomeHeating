@@ -102,11 +102,12 @@ Group gHeatingEQ
  */
 Number HeatPowerDemand_Current	"Current heat power demand [%.2f kW]"	(gHeatingEQ)
 Number HeatPowerDemand_DailyAvg	"Daily heat power demand [%.2f kW]"	(gHeatingEQ)
-Number HeatLoadFactor		"Heating load factor [%d W/degC]"	(gHeatingEQ)
+Number HeatLoadFactor		"Heating load factor [%d W/°C]"	(gHeatingEQ)
+// This ratio corresponds to underfloor heating vs. radiators heating power demand ratio. Should be within 0,5..0,75 range
+Number LO_HI_Ratio			"LO/HI power ratio [%.2f]"			(gHeatingEQ)
 Number HeatCompensation		"Heat compensation [%d W]"			(gHeatingEQ)
 // Persistable
 Number ActiveBoilerHeatingElements	"Boiler's active heating elements [%d]"		(gBoiler, gHeatingEQ)
-// expression for exec persistence
 String GoogleScriptURL "Spreadsheet update url: [%s]"							(gHeatingEQ) {mqtt="<[cloud-mqtt:brodok/heating/google-script-url:state:default]"}
 DateTime PowerDemandLastUpdate	"Current demand last update: [%1$td.%1$tm.%1$tY  %1$tH:%1$tM]"	(gHeatingEQ)
 

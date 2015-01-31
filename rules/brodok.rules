@@ -129,6 +129,7 @@ then
 	postUpdate(TempSensor_Bedroom, 19.0)
 	sendCommand(HeatCompensation, 600)
 	sendCommand(HeatLoadFactor, 110)
+	sendCommand(LO_HI_Ratio, 0.6)
 	logDebug("brodok.rules", "Init completed")
 	processUpdate = 1
 end	

@@ -8,12 +8,13 @@ sitemap brodok label="Main Menu"
 			Setpoint item=HeatLoadFactor minValue=90 maxValue=125 step=5.0
 			Setpoint item=HeatCompensation minValue=300 maxValue=800 step=100
 			Setpoint item=ActiveBoilerHeatingElements minValue=1 maxValue=6 step=1
+			Setpoint item=LO_HI_Ratio minValue=0.5 maxValue=0.75 step=0.05
 			Text item=TempSensor
-			Text item=Temperature
+			Text item=Temperature label="Outside temperature [%.1f °C]"
 			Text item=HeatPowerDemand_Current
 			Text item=PowerDemandLastUpdate
 			Text item=HeatPowerDemand_DailyAvg
-			Text item=GoogleScriptURL
+			//Text item=GoogleScriptURL
 		}
 	}
 	
