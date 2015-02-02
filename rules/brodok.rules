@@ -5,7 +5,7 @@ import org.openhab.model.script.actions.*
 
 var Number processUpdate = 0
 var Timer timer = null
-
+//var int[] tempAvg = new int[] {-5, -4, -1} // Jan-Feb-March test
 var String Boiler_PrevState
 
 /**
@@ -123,13 +123,18 @@ rule "Startup"
 when
 	System started
 then
-	postUpdate(ActiveBoilerHeatingElements, 3)
+	//postUpdate(ActiveBoilerHeatingElements, 3)
 	postUpdate(TempSensor_Corridor, 20.0)
 	postUpdate(TempSensor_Kitchen, 21.0)
 	postUpdate(TempSensor_Bedroom, 19.0)
-	sendCommand(HeatCompensation, 600)
-	sendCommand(HeatLoadFactor, 110)
-	sendCommand(LO_HI_Ratio, 0.6)
+	//sendCommand(HeatCompensation, 600)
+	//sendCommand(HeatLoadFactor, 110)
+	//sendCommand(LO_HI_Ratio, 0.6)
+	//postUpdate(Heating_Valve_Towel_Warmer, ON)
+	
+	//var os = java.lang.System::getProperty("os.name")
+	//logDebug("homeHeating.os", os)
+	
 	logDebug("brodok.rules", "Init completed")
 	processUpdate = 1
 end	
@@ -145,14 +150,24 @@ end
 
 rule "Heating Power demand persist to Google"
 when
-	Time is noon // recalculate power demand once a day
-	//Time cron "0 */5 * * * ?" // every 5 min.
+	//Time is noon // recalculate power demand once a day
+	Time cron "0 */30 * * * ?" // every 5 min.
 then
 	// TODO calculate daily average ambient temp for the last 24h.
-	//var dailyAvgAmbientTemp = (Temperature.state as DecimalType).doubleValue
-	var dailyAvgAmbientTemp = -2.0
 	
-	var roomTempAvg = (TempSensor.state as DecimalType).doubleValue
+	var Number dailyAvgAmbientTemp = 6.7
+	var average = Temperature.averageSince(now.minusMinutes(30), "rrd4j")
+	if (average instanceof DecimalType) {
+		dailyAvgAmbientTemp = (average as DecimalType).doubleValue
+	}
+	logDebug("gss.daily.avg.temp", "" + dailyAvgAmbientTemp)
+	
+	var roomTempAvg = 16.0
+	if (TempSensor.state instanceof DecimalType) {
+		roomTempAvg = (TempSensor.state as DecimalType).doubleValue	
+	}
+	logDebug("gss.room.temp", "" + roomTempAvg)
+	
 	var hc = (HeatCompensation.state as DecimalType).intValue
 	var lf = (HeatLoadFactor.state as DecimalType).intValue
 	
@@ -163,18 +178,30 @@ then
 		demand = 3000
 	}
 	demand = demand / 1000 // in kW
-	logDebug("brodok.rules", "calculated daily heating power demand kW: " + demand)
+	logDebug("gss.daily.power.demand", demand + " kW")
 	postUpdate(HeatPowerDemand_DailyAvg, demand)
 	
+	var Number maxBoilerPower = (ActiveBoilerHeatingElements.state as DecimalType).intValue
 	// number of active heating elements of the boiler
-	var boilerPower = (ActiveBoilerHeatingElements as DecimalType).intValue
+	logDebug("gss.maxBoilerPower", maxBoilerPower + " kW");
 	
-	//var curlCommand = String::format("echo DailyAverageDemand: %1$f kW", demand)
+	logDebug("gss.url", "" + GoogleScriptURL.state)
+	
+	var Number lhRatio = (LO_HI_Ratio.state as DecimalType).intValue
 	
 	var curlCommand = String::format(
 		// windows specific call
-		"cmd.exe /c curl -k \"%1$s?DATE=%%date%%&TEMP=%3$.2f&FACTOR=%4$d\"", 
-		GoogleScriptURL.state, new java.util.Date(), dailyAvgAmbientTemp, lf
+		"cmd.exe /c curl -k \"%1$s?Date=%%date%%&Time=%%time%%" + // 1
+		// linux specific call
+		// "curl -k \"%1$s?Date=$(date +%D)&Time=$(date +%T)" + //1
+		"&RoomTemp=%2$.2f" + //2
+		"&AmbientTemp=%3$.2f" + //3
+		"&HeatLoadFactor=%4$d" + //4
+		"&HeatCompensation_W=%5$d" + //5
+		"&boilerMaxPower_kW=%6$d" + //6
+		"&dailyAvgPowerDemand_kW=%7$.3f" + //7
+		"&LO_HI_Ratio=%8$d\"", //8 
+		GoogleScriptURL.state, roomTempAvg, dailyAvgAmbientTemp, lf, hc, maxBoilerPower, demand, lhRatio
 		)
 	//executeCommandLine("cmd.exe /c echo \"123\"");
 	executeCommandLine(curlCommand);
