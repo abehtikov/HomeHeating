@@ -1,6 +1,7 @@
 import org.openhab.core.library.types.*
 import org.openhab.core.persistence.*
 import org.openhab.model.script.actions.*
+import java.util.Date
 //import static java.util.Collections.*
 
 var Number processUpdate = 0
@@ -151,7 +152,8 @@ end
 rule "Heating Power demand persist to Google"
 when
 	//Time is noon // recalculate power demand once a day
-	Time cron "0 */30 * * * ?" // every 5 min.
+	//Time cron "0 */6 * * * ?" // every 5 min.
+	Item LO_HI_Ratio changed
 then
 	// TODO calculate daily average ambient temp for the last 24h.
 	
@@ -191,9 +193,9 @@ then
 	
 	var curlCommand = String::format(
 		// windows specific call
-		"cmd.exe /c curl -k \"%1$s?Date=%%date%%&Time=%%time%%" + // 1
+		//"cmd.exe /c curl -k \"%1$s?Date=%%date%%&Time=%%time%%" + // 1
 		// linux specific call
-		// "curl -k \"%1$s?Date=$(date +%D)&Time=$(date +%T)" + //1
+		"/usr/bin/curl -k \"%1$s?Date=%9$tF&Time=%9$tR" + //1
 		"&RoomTemp=%2$.2f" + //2
 		"&AmbientTemp=%3$.2f" + //3
 		"&HeatLoadFactor=%4$d" + //4
@@ -201,10 +203,10 @@ then
 		"&boilerMaxPower_kW=%6$d" + //6
 		"&dailyAvgPowerDemand_kW=%7$.3f" + //7
 		"&LO_HI_Ratio=%8$d\"", //8 
-		GoogleScriptURL.state, roomTempAvg, dailyAvgAmbientTemp, lf, hc, maxBoilerPower, demand, lhRatio
+		GoogleScriptURL.state, roomTempAvg, dailyAvgAmbientTemp, lf, hc, maxBoilerPower, demand, lhRatio, new Date()
 		)
 	//executeCommandLine("cmd.exe /c echo \"123\"");
-	executeCommandLine(curlCommand);
+	executeCommandLine(curlCommand, 2000);
 end
 
 
