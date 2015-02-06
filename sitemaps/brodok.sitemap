@@ -24,10 +24,22 @@ sitemap brodok label="Main Menu"
 	}
 	*/
 	
+	/*
 	Frame label="Boiler mode" {
 		Text item=Heating_Boiler_Mode label="Текущий режим работы котла [%s]  "
 		Selection item=Heating_Boiler_Mode label="Изменить режим" mappings=[Off="Выкл.", HI="Только радиаторы", LO="Теплый пол + радиаторы"]	
 		
+	}
+	*/
+	Frame label="Boiler control" {
+		Group item=gHeatingReq label="Setup" icon="config" {
+			Switch item=CalendarRequestPriority
+			Setpoint item=UserRequestMaxDuration minValue=2 maxValue=14 step=2
+			Selection item=UserHeatingRequest label="Change heating mode" mappings=[0ff="Выключить", HI="Радиаторы 70C", LO_R="Радиаторы 40С", LO_ALL="Теплый пол и радиаторы", AUTO="По графику"] //visibility=[BoilerHeatingMode=="Off", CalendarRequestPriority==OFF, BoilerHeatingMode=="Uninitialized"]
+		}
+		Text item=BoilerCtrlMode  // Calendar/manual
+		Text item=UserRequestExpires visibility=[BoilerCtrlMode==Manual] // time when manual mode is over
+		Text item=BoilerHeatingMode valuecolor=[Off="lightgray",HI="red",LO_R="orange",LO_ALL="yellow"] // HI / LO etc.
 	}
 	
 	Frame label="Температура помещения" {

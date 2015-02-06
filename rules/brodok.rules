@@ -2,12 +2,16 @@ import org.openhab.core.library.types.*
 import org.openhab.core.persistence.*
 import org.openhab.model.script.actions.*
 import java.util.Date
-//import static java.util.Collections.*
+import org.joda.time.*
 
 var Number processUpdate = 0
-var Timer timer = null
 //var int[] tempAvg = new int[] {-5, -4, -1} // Jan-Feb-March test
 var String Boiler_PrevState
+var String os_type = "win"
+var Timer timer = null
+var Timer heatingBackToAuto = null
+
+val DateTimeType expired = new DateTimeType()
 
 /**
  * This rule switches off warm floor valves when boiler is about to switch to HI temp. mode
@@ -124,21 +128,50 @@ rule "Startup"
 when
 	System started
 then
-	//postUpdate(ActiveBoilerHeatingElements, 3)
+	
 	postUpdate(TempSensor_Corridor, 20.0)
 	postUpdate(TempSensor_Kitchen, 21.0)
 	postUpdate(TempSensor_Bedroom, 19.0)
-	//sendCommand(HeatCompensation, 600)
-	//sendCommand(HeatLoadFactor, 110)
-	//sendCommand(LO_HI_Ratio, 0.6)
-	//postUpdate(Heating_Valve_Towel_Warmer, ON)
 	
-	//var os = java.lang.System::getProperty("os.name")
-	//logDebug("homeHeating.os", os)
+	AfterStartup.sendCommand(OFF)
+	timer = createTimer(now.plusSeconds(20)) [|
+		postUpdate(AfterStartup, ON)
+	]
+	//TempSensor.postUpdate(20.0)
+	CalendarRequestPriority.postUpdate(ON)
+	BoilerCtrlMode.postUpdate("Calendar")
+	
+	var os = java::lang::System::getProperty("os.name")
+	logDebug("homeHeating.os", os)
 	
 	logDebug("brodok.rules", "Init completed")
 	processUpdate = 1
 end	
+
+/*
+ * Let variables to get initial states from rrd
+ */
+rule "After System startup"
+when
+	Item AfterStartup changed from OFF to ON
+then
+	if (timer!=null) {
+		timer.cancel
+		timer = null
+	}
+	logDebug("heating.config", "Setting up default heating parameters")
+	if (UserRequestMaxDuration.state == Uninitialized) {
+		postUpdate(UserRequestMaxDuration, 4) // hours
+	}
+	/*
+	val DateTime future = now.plusMinutes(10)
+	var calendar = future.toCalendar(new java.util.Locale("en"))
+	logDebug("man.mode.calendar", "" + calendar)
+	postUpdate(UserRequestExpires, new DateTimeType(calendar))
+	
+	logDebug("man.mode.expires", "" + future)
+	*/ 
+end
 
 rule "Convert Atm. Pressure units"
 when
@@ -205,8 +238,106 @@ then
 		"&LO_HI_Ratio=%8$d\"", //8 
 		GoogleScriptURL.state, roomTempAvg, dailyAvgAmbientTemp, lf, hc, maxBoilerPower, demand, lhRatio, new Date()
 		)
-	//executeCommandLine("cmd.exe /c echo \"123\"");
-	executeCommandLine(curlCommand, 2000);
+	if (os_type == "win") {
+		executeCommandLine("cmd.exe /c echo \"123\"")
+	} else {
+		executeCommandLine(curlCommand, 2000)	
+	}
+end
+
+rule "User heating request change"
+when
+	Item UserHeatingRequest changed
+then
+	var userRequest = UserHeatingRequest.state
+	logDebug("user.heating.request", "" + userRequest)
+	if (userRequest == "AUTO") {
+		
+		// lookup persisted value of the CalendarHeatingRequest
+		var String calendarHeatingState = CalendarHeatingRequest.state.toString()
+		var String boilerState = BoilerHeatingMode.state.toString()
+		
+		logDebug("heating.auto.requested", "Compare calendar state and boiler's state: {} vs. {}", calendarHeatingState, boilerState)
+		if (calendarHeatingState == "Uninitialized") {
+			calendarHeatingState = "Off"
+		}
+		// compare current state and calendar's state
+		if (calendarHeatingState != boilerState) {
+		// if required, switch boiler to the requested heating mode
+			sendCommand(BoilerHeatingMode, calendarHeatingState)
+		}
+		// if user requested AUTO himself - cancel timer/trigger
+		if (heatingBackToAuto != null) {
+			heatingBackToAuto.cancel()
+			heatingBackToAuto = null
+		}
+		// update GUI
+		postUpdate(BoilerCtrlMode, "Calendar")
+		postUpdate(UserRequestExpires, expired)
+	} else {
+		postUpdate(BoilerCtrlMode, "Manual");
+		
+		if (userRequest != "Off") {
+			
+			sendCommand(BoilerHeatingMode, "" + userRequest)
+			// set a timer to switch back to calendar after timeout	
+			var timeout = (UserRequestMaxDuration.state as DecimalType).intValue
+			var endTime = now.plusMinutes(timeout)
+			postUpdate(UserRequestExpires, new DateTimeType(endTime.toCalendar(new java.util.Locale("en"))))
+			logDebug("schedule.fututre.event", "Back to calendar control on " + endTime)
+			
+			if (heatingBackToAuto == null) {
+				heatingBackToAuto = createTimer(endTime) [|
+					postUpdate(UserHeatingRequest, "AUTO")
+				]
+			} else {
+				// reschedule does not work
+				heatingBackToAuto.reschedule(endTime)
+			}
+		} else { // handle Off command
+			sendCommand(BoilerHeatingMode, "Off")
+			if (heatingBackToAuto != null) {
+				heatingBackToAuto.cancel()
+				heatingBackToAuto = null
+			}
+			// TODO send email reminder to switch boiler to calendar mode.
+		}
+	}
+end
+
+rule "Heating control back to calendar"
+when
+	Item BoilerCtrlMode changed from "Manual" to "Calendar"
+then
+	logDebug("heating.man2calendar", "confirmed")
+end
+
+rule "Calendar heating event"
+when
+	Item CalendarHeatingRequest received command
+then
+	var cmd = receivedCommand
+	// validate calendar heating request command
+	if (cmd == "Off" || cmd == "LO_R" || cmd == "HI" || cmd == "LO_ALL") {
+		var controlState = BoilerCtrlMode.state
+		if (controlState == "Calendar") {
+			// validate command
+			sendCommand(BoilerHeatingMode, receivedCommand)
+		
+		} else if (CalendarRequestPriority.state == ON) {
+			logDebug("heating.calendar.redirect", "Recieved {} when priority is ON", receivedCommand)
+			// switch Manual to Calendar/AUTO
+			sendCommand(UserHeatingRequest, "AUTO")
+		}	
+	} else if (cmd == "CAL") {
+		// switch back to calendar based heating schedule
+		postUpdate(CalendarRequestPriority, ON)
+		sendCommand(UserHeatingRequest, "AUTO")
+		logInfo("calendar.event", "Switching back to calendar based heating schedule")
+		// send email
+	} else {
+		logInfo("calendar.event", "Unsupported calendar command event: {}", cmd)
+	}
 end
 
 

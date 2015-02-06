@@ -16,6 +16,9 @@ Group:Switch:OR(ON, OFF)		RelaysGPIO		"Реле управления котло�
 Group gBoiler		(gStatus)
 Group gSetPoints	(gStatus)
 
+// initialize values after in a short delay after System startup.
+Switch AfterStartup
+
 /* Test Modbus OVEN PLC */
 /*
 Group Modbus	(All)
@@ -25,7 +28,16 @@ Switch OvenSwitch 			"Oven switch"						(Modbus)	{modbus="oven:1"}
 */
 
 
-/* Lights */
+/* New Heating request state logic */
+Group gHeatingReq
+
+String CalendarHeatingRequest	"Calendar request [%s]"	(gHeatingReq)	{mqtt="<[cloud-mqtt:brodok/heating/req:command:REGEX((HI|LO_R|LO_ALL|Off))]"}
+String UserHeatingRequest	"User request [%s]"	(gHeatingReq) // sitemap GUI binding selection or switch
+Switch CalendarRequestPriority	"Calendar priority"	<calendar> (gHeatingReq) // Does calendar request override user request?
+Number UserRequestMaxDuration	"User request max. duration [%d h]" <clock> (gHeatingReq) // 2-3-4-6-8 h
+String BoilerCtrlMode	"Boiler control mode [%s]"	(gHeatingReq) // manually | by calendar
+DateTime UserRequestExpires	"Manual request mode expires [%1$tH:%1$tM]"	(gHeatingReq) // time when the last heating request command from user will expire
+String BoilerHeatingMode	"Heating mode [MAP(ru.map):%s]"	(gHeatingReq) // status text label read-only: Low temperature, High temperature, Off
 
 /* Heating */
 
