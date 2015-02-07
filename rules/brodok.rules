@@ -5,17 +5,19 @@ import java.util.Date
 import org.joda.time.*
 
 var Number processUpdate = 0
-//var int[] tempAvg = new int[] {-5, -4, -1} // Jan-Feb-March test
-var String Boiler_PrevState
+//var String Boiler_PrevState
 var String os_type = "win"
 var Timer timer = null
 var Timer heatingBackToAuto = null
+var Timer warmFloorTimer = null
 
 val DateTimeType expired = new DateTimeType()
 
 /**
  * This rule switches off warm floor valves when boiler is about to switch to HI temp. mode
  */
+ 
+/*
 rule "Boiler HI mode"
  	when
  		Item Heating_Boiler_HI received command ON
@@ -40,10 +42,10 @@ rule "Boiler LO mode"
 	 		WarmFloorValve.sendCommand(OFF)
 	 	}
  end
-
+*/
 /*
  * Rule 1
- */
+ *
 rule "Boiler Master mode change"
 when
 	Item Heating_Boiler_Mode received command
@@ -92,6 +94,7 @@ then
 	// preserve value to filter out duplicate command (ON-ON or HI-HI) in upper rule 1
 	Boiler_PrevState = Heating_Boiler_Mode.state.toString()
 end
+*/
 
 rule "Calculate current heating power demand"
 when
@@ -139,10 +142,10 @@ then
 	]
 	//TempSensor.postUpdate(20.0)
 	CalendarRequestPriority.postUpdate(ON)
-	BoilerCtrlMode.postUpdate("Calendar")
+	//BoilerCtrlMode.postUpdate("Calendar")
 	
-	var os = java::lang::System::getProperty("os.name")
-	logDebug("homeHeating.os", os)
+	//var os = java::lang::System::getProperty("os.name")
+	//logDebug("homeHeating.os", os)
 	
 	logDebug("brodok.rules", "Init completed")
 	processUpdate = 1
@@ -163,14 +166,12 @@ then
 	if (UserRequestMaxDuration.state == Uninitialized) {
 		postUpdate(UserRequestMaxDuration, 4) // hours
 	}
-	/*
-	val DateTime future = now.plusMinutes(10)
-	var calendar = future.toCalendar(new java.util.Locale("en"))
-	logDebug("man.mode.calendar", "" + calendar)
-	postUpdate(UserRequestExpires, new DateTimeType(calendar))
 	
-	logDebug("man.mode.expires", "" + future)
-	*/ 
+	// after system reboot boiler control mode is restored back to calendar
+	postUpdate(UserHeatingRequest, "AUTO")
+	var String message = "Boiler control mode set to Calendar after system reboot"
+	logInfo("heating.control.mode", message)
+	// sendMail(to, subject, message)
 end
 
 rule "Convert Atm. Pressure units"
@@ -249,8 +250,8 @@ rule "User heating request change"
 when
 	Item UserHeatingRequest changed
 then
-	var userRequest = UserHeatingRequest.state
-	logDebug("user.heating.request", "" + userRequest)
+	val userRequest = UserHeatingRequest.state
+	
 	if (userRequest == "AUTO") {
 		
 		// lookup persisted value of the CalendarHeatingRequest
@@ -277,12 +278,25 @@ then
 	} else {
 		postUpdate(BoilerCtrlMode, "Manual");
 		
-		if (userRequest != "Off") {
+		if ( UserHeatingRequest.state == "Off" ) {
 			
+			sendCommand(BoilerHeatingMode, "Off")
+			if (heatingBackToAuto != null) {
+				heatingBackToAuto.cancel()
+				heatingBackToAuto = null
+			}
+			// TODO send email reminder to switch boiler to calendar mode.
+			logInfo("boiler.request.off", "Switching boiler off completely!!!")
+			if (CalendarRequestPriority.state == OFF) {
+				val String message = "Boiler is turned Off completely and won't be triggered by calendar. "
+				//	+ "To activate the boiler remotely send a message to MQTT broker."
+				// sendMail(to, subject, message)
+			}
+		} else {
 			sendCommand(BoilerHeatingMode, "" + userRequest)
 			// set a timer to switch back to calendar after timeout	
 			var timeout = (UserRequestMaxDuration.state as DecimalType).intValue
-			var endTime = now.plusMinutes(timeout)
+			var endTime = now.plusHours(timeout)
 			postUpdate(UserRequestExpires, new DateTimeType(endTime.toCalendar(new java.util.Locale("en"))))
 			logDebug("schedule.fututre.event", "Back to calendar control on " + endTime)
 			
@@ -294,15 +308,8 @@ then
 				// reschedule does not work
 				heatingBackToAuto.reschedule(endTime)
 			}
-		} else { // handle Off command
-			sendCommand(BoilerHeatingMode, "Off")
-			if (heatingBackToAuto != null) {
-				heatingBackToAuto.cancel()
-				heatingBackToAuto = null
-			}
-			// TODO send email reminder to switch boiler to calendar mode.
 		}
-	}
+	} 
 end
 
 rule "Heating control back to calendar"
@@ -319,8 +326,7 @@ then
 	var cmd = receivedCommand
 	// validate calendar heating request command
 	if (cmd == "Off" || cmd == "LO_R" || cmd == "HI" || cmd == "LO_ALL") {
-		var controlState = BoilerCtrlMode.state
-		if (controlState == "Calendar") {
+		if (BoilerCtrlMode.state == "Calendar") {
 			// validate command
 			sendCommand(BoilerHeatingMode, receivedCommand)
 		
@@ -328,16 +334,82 @@ then
 			logDebug("heating.calendar.redirect", "Recieved {} when priority is ON", receivedCommand)
 			// switch Manual to Calendar/AUTO
 			sendCommand(UserHeatingRequest, "AUTO")
-		}	
-	} else if (cmd == "CAL") {
-		// switch back to calendar based heating schedule
-		postUpdate(CalendarRequestPriority, ON)
-		sendCommand(UserHeatingRequest, "AUTO")
-		logInfo("calendar.event", "Switching back to calendar based heating schedule")
-		// send email
-	} else {
+		} else {
+			logInfo("calendar.request", "Calendar priority is OFF. Ignore command: " + cmd)
+		}
+	} else if (cmd != "CAL") {
 		logInfo("calendar.event", "Unsupported calendar command event: {}", cmd)
 	}
 end
 
+rule "Calendar control request" 
+when
+	Item CalendarHeatingRequest changed to CAL
+then
+	// switch back to calendar based heating schedule
+	postUpdate(CalendarRequestPriority, ON)
+	//restore the previous calendar request
+	if (previousState == "CAL") {
+		sendCommand(CalendarHeatingRequest, "Off")
+	} else {
+		sendCommand(CalendarHeatingRequest, previousState)
+	}
+	// send email
+	// sendMail(to, "Brodok heating is back to calendar control", 
+	// "Home heating system control mode is set to automatic (by calendar).")
+end
 
+rule "BoilerHeatingMode changed"
+when
+	Item BoilerHeatingMode changed
+then
+	val newState = BoilerHeatingMode.state
+	logInfo("boiler.heating.mode", "Switch from {} to {}", previousState, newState)
+	
+	if (newState == "HI") {
+		sendCommand(Heating_Boiler_HI, ON)
+		sendCommand(Heating_Boiler_LO, OFF)
+		postUpdate(WarmFloorValveHelper, OFF)
+	
+	} else if (newState == "LO_R") {
+		sendCommand(Heating_Boiler_HI, OFF)
+		sendCommand(Heating_Boiler_LO, ON)
+		postUpdate(WarmFloorValveHelper, OFF)
+		
+	} else if (newState == "LO_ALL") {
+		sendCommand(Heating_Boiler_HI, OFF)
+		sendCommand(Heating_Boiler_LO, ON)
+		
+		if (previousState == "HI") {
+			// delay opening warm floor valves until water cools down
+			warmFloorTimer = null
+			warmFloorTimer = createTimer(now.plusMinutes(5), [|
+				WarmFloorValve.sendCommand(ON)
+			])
+			logDebug("boiler.heating.mode", "HI->LO_ALL 5 min. delay before opening warm floor valves")
+		} else {
+			WarmFloorValve.sendCommand(ON)
+		}
+	} else if (newState == "Off") {
+		sendCommand(Heating_Boiler_HI, OFF)
+		sendCommand(Heating_Boiler_LO, OFF)
+		postUpdate(WarmFloorValveHelper, OFF)
+		
+	} else {
+		logInfo("boiler.heating.mode", "Ignore command: " + newState)
+	}
+end
+
+rule "Close warm floor valves correctly"
+when
+	Item WarmFloorValveHelper changed to OFF
+then
+	// check if timer exists to open valves in future
+	if (warmFloorTimer != null) {
+		warmFloorTimer.cancel()
+		warmFloorTimer = null
+	}
+	// switch warm floor valves group OFF
+	WarmFloorValve.sendCommand(OFF)
+	postUpdate(WarmFloorValveHelper, ON)
+end

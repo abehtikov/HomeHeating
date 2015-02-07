@@ -31,14 +31,15 @@ Switch OvenSwitch 			"Oven switch"						(Modbus)	{modbus="oven:1"}
 /* New Heating request state logic */
 Group gHeatingReq
 
-String CalendarHeatingRequest	"Calendar request [%s]"	(gHeatingReq)	{mqtt="<[cloud-mqtt:brodok/heating/req:command:REGEX((HI|LO_R|LO_ALL|Off))]"}
-String UserHeatingRequest	"User request [%s]"	(gHeatingReq) // sitemap GUI binding selection or switch
+String CalendarHeatingRequest	"Calendar request [%s]"	(gHeatingReq)	{mqtt="<[cloud-mqtt:brodok/heating/req:command:REGEX((HI|LO_R|LO_ALL|Off|CAL))]"}
+String UserHeatingRequest	"User request [%s]"	(gHeatingReq) // sitemap GUI binding selection
 Switch CalendarRequestPriority	"Calendar priority"	<calendar> (gHeatingReq) // Does calendar request override user request?
 Number UserRequestMaxDuration	"User request max. duration [%d h]" <clock> (gHeatingReq) // 2-3-4-6-8 h
 String BoilerCtrlMode	"Boiler control mode [%s]"	(gHeatingReq) // manually | by calendar
 DateTime UserRequestExpires	"Manual request mode expires [%1$tH:%1$tM]"	(gHeatingReq) // time when the last heating request command from user will expire
-String BoilerHeatingMode	"Heating mode [MAP(ru.map):%s]"	(gHeatingReq) // status text label read-only: Low temperature, High temperature, Off
+String BoilerHeatingMode	"Heating mode [MAP(ru.map):%s]"	(gHeatingReq, gBoiler) // status text label read-only: Low temperature, High temperature, Off
 
+Switch WarmFloorValveHelper
 /* Heating */
 
 // Towel heater valve is normally open. Switch position:ON is a default state. By default: OFF
@@ -73,8 +74,11 @@ Switch Heating_Boiler_HI	"HI temperature boiler mode"		(gBoiler)		{gpio="pin:7"}
 Switch Heating_WF_Valves_LO_OFF		"230V Warm floor valves"		(Heating, WarmFloorValve, RelaysGPIO) 	{gpio="pin:27 activelow:no"}	// Relay #2
 */
 
-/* 3 valid modes: OFF, LO, HI */
-String Heating_Boiler_Mode		"Boiler mode: [%s]"				(gBoiler)		{mqtt="<[cloud-mqtt:brodok/heating/boiler/mode:command:REGEX((HI|LO|Off))]"}
+/* 3 valid modes: OFF, LO, HI 
+ * Deprecated. Use BoilerHeatingMode item. Off / HI / LO_R / LO_ALL
+ */
+//String Heating_Boiler_Mode		"Boiler mode: [%s]"				(gBoiler)		{mqtt="<[cloud-mqtt:brodok/heating/boiler/mode:command:REGEX((HI|LO|Off))]"}
+
 /* Flow rate of heat medium. Depends on the number of open heating valves */
 Number 	Heating_FlowRate		"Total flow rate of heat medium [%.1f l/min]"		(gBoiler)
 /* Boiler power depends on boiler mode and flow rate */
@@ -123,7 +127,7 @@ Number HeatCompensation		"Heat compensation [%d W]"			(gHeatingEQ, gHeatingParam
 // Persistable
 Number ActiveBoilerHeatingElements	"Boiler's active heating elements [%d]"		(gBoiler, gHeatingEQ, gHeatingParams)
 String GoogleScriptURL "Spreadsheet update url: [%s]"							(gHeatingEQ) {mqtt="<[cloud-mqtt:brodok/heating/google-script-url:state:default]"}
-DateTime PowerDemandLastUpdate	"Current demand last update: [%1$td.%1$tm.%1$tY  %1$tH:%1$tM]"	(gHeatingEQ)
+DateTime PowerDemandLastUpdate	"Current demand last update: [%1$tA,  %1$tH:%1$tM]"	(gHeatingEQ)
 
 Number 	Temperature   	"Температура воздуха [%.1f °C]"		<temperature>	(gWeather, gHeatingEQ)	{weather="locationId=home, type=temperature, property=current"}
 Number	Humidity      	"Влажность [%d %%]"       							(gWeather)	{weather="locationId=home, type=athmosphere, property=humidity"}
