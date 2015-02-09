@@ -6,7 +6,7 @@ import org.joda.time.*
 
 var Number processUpdate = 0
 //var String Boiler_PrevState
-var String os_type = "win"
+var String os_type = "linux"
 var Timer timer = null
 var Timer heatingBackToAuto = null
 var Timer warmFloorTimer = null
@@ -186,8 +186,7 @@ end
 rule "Heating Power demand persist to Google"
 when
 	//Time is noon // recalculate power demand once a day
-	//Time cron "0 */6 * * * ?" // every 5 min.
-	Item LO_HI_Ratio changed
+	Time cron "0 25 */1 * * ?" // Item LO_HI_Ratio changed
 then
 	// TODO calculate daily average ambient temp for the last 24h.
 	
