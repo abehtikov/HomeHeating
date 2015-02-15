@@ -5,16 +5,25 @@ sitemap brodok label="Main Menu"
 		Group item=gBoiler label="Boiler" icon="groundfloor"
 		Group item=gPresense label="Presense" icon="garden" 
 		Group item=gHeatingEQ label="Heat Power Demand" icon="pie" {
-			Setpoint item=HeatLoadFactor minValue=90 maxValue=125 step=5.0
-			Setpoint item=HeatCompensation minValue=300 maxValue=800 step=100
-			Setpoint item=ActiveBoilerHeatingElements minValue=1 maxValue=6 step=1
-			Setpoint item=LO_HI_Ratio minValue=50 maxValue=75 step=5
-			Text item=TempSensor
-			Text item=Temperature label="Outside temperature [%.1f °C]"
-			Text item=HeatPowerDemand_Current
-			Text item=PowerDemandLastUpdate
-			Text item=HeatPowerDemand_DailyAvg
-			//Text item=GoogleScriptURL
+			Frame label="Model parameters" {
+				Setpoint item=HeatLoadFactor minValue=90 maxValue=125 step=5.0
+				Setpoint item=HeatCompensation minValue=300 maxValue=800 step=100
+				Setpoint item=ActiveBoilerHeatingElements minValue=1 maxValue=6 step=1
+				Setpoint item=LO_HI_Ratio minValue=50 maxValue=75 step=5	
+			}
+			Frame label="Other" {
+				Text item=TempSensor
+				Text item=Temperature label="Outside temperature [%.1f °C]"
+				Text item=HeatPowerDemand_Current
+				Text item=PowerDemandLastUpdate
+				Text item=HeatPowerDemand_DailyAvg
+				//Text item=GoogleScriptURL
+			}
+			Frame label="Estimated daily heating cycles" {
+				Text item=Duration_ALL_40C
+				Text item=Duration_R_70C
+				Text item=Duration_R_40C
+			}
 		}
 	}
 	
@@ -34,7 +43,7 @@ sitemap brodok label="Main Menu"
 	Frame label="Boiler control" {
 		Group item=gHeatingReq label="Setup" icon="config" {
 			Switch item=CalendarRequestPriority
-			Setpoint item=UserRequestMaxDuration minValue=2 maxValue=14 step=2
+			Setpoint item=UserRequestMaxDuration minValue=2 maxValue=14 step=1
 			Selection item=UserHeatingRequest label="Change heating mode" mappings=[Off="Выключить", HI="Радиаторы 70C", LO_R="Радиаторы 40С", LO_ALL="Теплый пол и радиаторы", AUTO="По графику"] //visibility=[BoilerHeatingMode=="Off", CalendarRequestPriority==OFF, BoilerHeatingMode=="Uninitialized"]
 		}
 		Text item=BoilerCtrlMode  // Calendar/manual

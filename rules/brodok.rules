@@ -3,98 +3,17 @@ import org.openhab.core.persistence.*
 import org.openhab.model.script.actions.*
 import java.util.Date
 import org.joda.time.*
+import java.lang.Math
 
 var Number processUpdate = 0
 //var String Boiler_PrevState
-var String os_type = "win"
+var String os_type = "linux" //"win"
 var Timer timer = null
 var Timer heatingBackToAuto = null
 var Timer warmFloorTimer = null
 
 val DateTimeType expired = new DateTimeType()
 
-/**
- * This rule switches off warm floor valves when boiler is about to switch to HI temp. mode
- */
- 
-/*
-rule "Boiler HI mode"
- 	when
- 		Item Heating_Boiler_HI received command ON
- 	then
- 		WarmFloorValve.sendCommand(OFF)
-end
-
-rule "Boiler LO mode"
-	when
- 		Item Heating_Boiler_LO received command
- 	then
- 		if (receivedCommand == ON) {
- 			// open warm floor manifold valves
- 			if (Heating_Boiler_HI.state == OFF) {
- 				
- 				WarmFloorValve.sendCommand(ON)
-	 		} else {
-	 			logInfo("brodok.rules", "Cannot switch to LO mode, because boiler is running HI temperature mode.")
-	 		}	
-	 	} else {
-	 		// close warm floor manifold valves
-	 		WarmFloorValve.sendCommand(OFF)
-	 	}
- end
-*/
-/*
- * Rule 1
- *
-rule "Boiler Master mode change"
-when
-	Item Heating_Boiler_Mode received command
-then
-	var requested_mode = receivedCommand
-	logInfo("brodok.rules", "Received command: " + requested_mode + ". previousState: " + Boiler_PrevState)
-	
-	// avoid processing duplicate commands
-	if (requested_mode != Boiler_PrevState) {
-	
-		if (requested_mode == "Off") {
-			sendCommand(Heating_Boiler_HI, OFF)
-			sendCommand(Heating_Boiler_LO, OFF)	
-				
-		} else if (requested_mode == "HI") {
-			sendCommand(Heating_Boiler_HI, ON)
-			sendCommand(Heating_Boiler_LO, OFF)		
-			
-		} else if (requested_mode == "LO") {
-			// when switching from HI to LO, give the temperature 5min to cool down before opening the valves 
-			if (Boiler_PrevState == "HI") {
-				logDebug("boiler.mode", "5 min. delay before opening warm floor valves")
-			}
-			sendCommand(Heating_Boiler_HI, OFF)
-			sendCommand(Heating_Boiler_LO, ON)
-			
-		} else {
-			logInfo("brodok.rules", "Ignore command: " + requested_mode)
-		}
-		
-	}
-end
-
-rule "Boiler status update"
-when
-	Item Heating_Boiler_Mode changed
-then
-	var s = Heating_Boiler_Mode.state
-	var msg = "Boiler status update attempt from [" + previousState + "] to [" + s + "]"
-	logInfo("brodok.rules", msg)
-	
-	if ( !((s == "Off") || (s == "LO") || (s == "HI")) ) {
-		// correct value for GUI
-		Heating_Boiler_Mode.state = previousState		
-	}
-	// preserve value to filter out duplicate command (ON-ON or HI-HI) in upper rule 1
-	Boiler_PrevState = Heating_Boiler_Mode.state.toString()
-end
-*/
 
 rule "Calculate current heating power demand"
 when
@@ -185,18 +104,16 @@ end
 
 rule "Heating Power demand persist to Google"
 when
-	//Time is noon // recalculate power demand once a day
+	Time is noon or // recalculate power demand once a day
 	//Time cron "0 */6 * * * ?" // every 5 min.
 	Item LO_HI_Ratio changed
 then
-	// TODO calculate daily average ambient temp for the last 24h.
-	
 	var Number dailyAvgAmbientTemp = 6.7
-	var average = Temperature.averageSince(now.minusMinutes(30), "rrd4j")
+	var average = Temperature.averageSince(now.minusHours(24), "rrd4j")
 	if (average instanceof DecimalType) {
 		dailyAvgAmbientTemp = (average as DecimalType).doubleValue
 	}
-	logDebug("gss.daily.avg.temp", "" + dailyAvgAmbientTemp)
+	logDebug("gss.avg.temp", "Average outside temperature for the last 24h: " + dailyAvgAmbientTemp)
 	
 	var roomTempAvg = 16.0
 	if (TempSensor.state instanceof DecimalType) {
@@ -217,31 +134,50 @@ then
 	logDebug("gss.daily.power.demand", demand + " kW")
 	postUpdate(HeatPowerDemand_DailyAvg, demand)
 	
-	var Number maxBoilerPower = (ActiveBoilerHeatingElements.state as DecimalType).intValue
-	// number of active heating elements of the boiler
-	logDebug("gss.maxBoilerPower", maxBoilerPower + " kW");
+	// run script to calculate boiler duty cycles according to the model
+	callScript("demo")
 	
 	logDebug("gss.url", "" + GoogleScriptURL.state)
 	
-	var Number lhRatio = (LO_HI_Ratio.state as DecimalType).intValue
+	val all40c = (Duration_ALL_40C.state as DecimalType).doubleValue
+	val r70c = (Duration_R_70C.state as DecimalType).doubleValue
+	val r40c = (Duration_R_40C.state as DecimalType).doubleValue
 	
+	val String url = GoogleScriptURL.state
+	
+	var winCurlCmd = String::format("cmd.exe /c curl -k \"%1$s?" +
+		"Timestamp=%2$tQ&PowerDemand=%3$.3f&all40=%4$.3f&r70=%5$.3f&r40=%6$.3f\"",
+		url, new Date(), demand, all40c, r70c, r40c)
+/*	
 	var curlCommand = String::format(
-		// windows specific call
-		//"cmd.exe /c curl -k \"%1$s?Date=%%date%%&Time=%%time%%" + // 1
 		// linux specific call
-		"/usr/bin/curl -k \"%1$s?Date=%9$tF&Time=%9$tR" + //1
+		"/usr/bin/curl -k \"" + //1
+		"%1$s?Timestamp=%9$tQ" + // 1 & 9
 		"&RoomTemp=%2$.2f" + //2
 		"&AmbientTemp=%3$.2f" + //3
 		"&HeatLoadFactor=%4$d" + //4
 		"&HeatCompensation_W=%5$d" + //5
 		"&boilerMaxPower_kW=%6$d" + //6
 		"&dailyAvgPowerDemand_kW=%7$.3f" + //7
-		"&LO_HI_Ratio=%8$d\"", //8 
-		GoogleScriptURL.state, roomTempAvg, dailyAvgAmbientTemp, lf, hc, maxBoilerPower, demand, lhRatio, new Date()
+		"&LO_HI_Ratio=%8$d" + //8
+		"&ALL_40C=%10$.3f" + //10
+		"&R_70C=%11$.3f" + //11
+		"&R_40C=%12$.3f\"", //12
+		GoogleScriptURL.state, roomTempAvg, dailyAvgAmbientTemp, lf, hc, 
+		maxBoilerPower, demand, lhRatio, new Date(), all40c, r70c, r40c
 		)
+*/
+	var curlCommand = String::format("/usr/bin/curl -k \"%1$s?" +
+		"Timestamp=%2$tQ&PowerDemand=%3$.3f&all40=%4$.3f&r70=%5$.3f&r40=%6$.3f\"",
+		url, new Date(), demand, all40c, r70c, r40c
+	)
+	
 	if (os_type == "win") {
-		executeCommandLine("cmd.exe /c echo \"123\"")
+		logDebug("gss.win.curl", winCurlCmd)
+		//executeCommandLine("cmd.exe /c echo \"123\"")
+		executeCommandLine(winCurlCmd)
 	} else {
+		logDebug("gss.curl.dump", curlCommand)
 		executeCommandLine(curlCommand, 2000)	
 	}
 end
@@ -413,3 +349,11 @@ then
 	WarmFloorValve.sendCommand(OFF)
 	postUpdate(WarmFloorValveHelper, ON)
 end
+
+rule "Power demand changed"
+when
+	Item HeatPowerDemand_Current changed
+then
+	callScript("demo")
+end
+

@@ -1,1 +1,51 @@
-say("Demo script has been called!")
+/*
+ * set power demand heating variables according to the following model
+ * 
+ * input variables
+ * PD - power deman in kW
+ * ka, kb - coeficients
+ * n - max. boiler power (typical 3kW)
+ * r - radiators @70C / @40C power ratio [3.2 - 3.3]
+ * 
+ * calculated variables
+ * ALL_40C - duration [hour] when LO_ALL event is active
+ * R_70C - duration when radiators in HI mode are ON
+ * R_40C - duration when radiators in LO mode are ON
+ * 
+ * Model:
+ * ALL_40C = ka * Sqrt(PD + kb)
+ * R_70C = (PD * 24 / n) - ALL_40C
+ * R_40C = R_70C * r
+ */
+
+val double ka = 4.0
+val double kb = -0.2
+val double n = 3 // max. boiler power, kW
+val double r = 3.2
+
+var double powerDemand = 1.0
+
+var name = HeatPowerDemand_Current.state.getClass().getName()
+logDebug("demo.script", "name : " + name)
+
+var isDecimal = (HeatPowerDemand_Current.state instanceof DecimalType)
+logDebug("demo.script", "isDecimal :" + isDecimal)
+
+powerDemand = (HeatPowerDemand_DailyAvg.state as org.openhab.core.library.types.DecimalType).doubleValue
+
+var i = powerDemand + kb
+if ( i < 0.0 ) {
+	i = 0.0
+}
+logDebug("demo.script", "i : " + i.getClass().getName())
+
+val double all40c = ka * Math::sqrt(i.doubleValue)
+postUpdate(Duration_ALL_40C, all40c)
+
+val r70c = (powerDemand * 24.0 / n) - all40c
+postUpdate(Duration_R_70C, r70c)
+
+var r40c = r70c * r
+postUpdate(Duration_R_40C, r40c)
+
+

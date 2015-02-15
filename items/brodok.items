@@ -129,6 +129,10 @@ Number ActiveBoilerHeatingElements	"Boiler's active heating elements [%d]"		(gBo
 String GoogleScriptURL "Spreadsheet update url: [%s]"							(gHeatingEQ) {mqtt="<[cloud-mqtt:brodok/heating/google-script-url:state:default]"}
 DateTime PowerDemandLastUpdate	"Current demand last update: [%1$tA,  %1$tH:%1$tM]"	(gHeatingEQ)
 
+Number Duration_ALL_40C		"Warm floors & radiators [%.2f h]"	(gHeatingEQ)
+Number Duration_R_70C		"Radiators 70C [%.2f h]"		(gHeatingEQ)
+Number Duration_R_40C		"Radiators 40C [%.2f h]"	(gHeatingEQ)
+
 Number 	Temperature   	"Температура воздуха [%.1f °C]"		<temperature>	(gWeather, gHeatingEQ)	{weather="locationId=home, type=temperature, property=current"}
 Number	Humidity      	"Влажность [%d %%]"       							(gWeather)	{weather="locationId=home, type=athmosphere, property=humidity"}
 Number	AtmPressure_mbar		"Pressure [%.2f mbar]"		(gWeather)		{weather="locationId=home, type=athmosphere, property=pressure"}
