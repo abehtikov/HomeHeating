@@ -105,18 +105,33 @@ then
 	postUpdate(AtmPressure_mmHg, mmHg.intValue)
 end
 
+rule "New month begins"
+when
+	Time cron "0 0 0 1 * ?" or 
+	System started
+then
+	callScript("monthAverage")
+end
+
+
 rule "Heating Power demand persist to Google"
 when
-	Time is noon or // recalculate power demand once a day
+	//Time is noon or // recalculate power demand once a day
 	//Time cron "0 */6 * * * ?" // every 5 min.
-	Item LO_HI_Ratio changed
+	Item LO_HI_Ratio changed or
+	
+	// when Moving average calculated
+	Item ma24hTemp received update
 then
-	var Number dailyAvgAmbientTemp = 6.7
-	var average = Temperature.averageSince(now.minusHours(24), "rrd4j")
-	if (average instanceof DecimalType) {
-		dailyAvgAmbientTemp = (average as DecimalType).doubleValue
-	}
-	logDebug("gss.avg.temp", "Average outside temperature for the last 24h: " + dailyAvgAmbientTemp)
+	val t24ma = (ma24hTemp.state as DecimalType).doubleValue
+	val t48ma = (ma48hTemp.state as DecimalType).doubleValue
+	
+	var t24avg = (ma24hRrdTemp.state as DecimalType).doubleValue
+	var t48avg = (ma48hRrdTemp.state as DecimalType).doubleValue
+	logInfo("gss.ma.temperature", "Moving average since 24/48 h is {}/{}", t24ma, t48ma)
+	logInfo("gss.rrd.average.temp", "RRD based average temperature since 24/48 h is {}/{}", t24avg, t48avg)
+	
+	var Number dailyAvgAmbientTemp = t48avg
 	
 	var roomTempAvg = 16.0
 	if (TempSensor.state instanceof DecimalType) {
@@ -270,11 +285,12 @@ then
 			sendCommand(BoilerHeatingMode, receivedCommand)
 		
 		} else if (CalendarRequestPriority.state == ON && BoilerHeatingMode.state == "Off") {
-			logDebug("heating.calendar.takeover", "Received {} when calendar priority is ON and boiler is Off", receivedCommand)
+			logDebug("heating.calendar.takeover", "Received {} when calendar priority is ON and boiler is Off", cmd)
 			// switch Manual to Calendar/AUTO
 			sendCommand(UserHeatingRequest, "AUTO")
 		} else {
-			logInfo("calendar.request", "Calendar priority is OFF. Ignore command: " + cmd)
+			logInfo("calendar.request", "Boiler control mode: {}, heating mode: {}. Ignore command: {}", 
+				BoilerControlMode.state, BoilerHeatingMode.state, cmd)
 		}
 	} else if (cmd != "CAL") {
 		logInfo("calendar.event", "Unsupported calendar command event: {}", cmd)
@@ -353,30 +369,32 @@ then
 	postUpdate(WarmFloorValveHelper, ON)
 end
 
+/*
 rule "Power demand changed"
 when
 	Item HeatPowerDemand_Current changed
 then
 	callScript("demo")
 end
+*/
 
 rule "Moving average ambient temperature"
 when
-	Time cron "0 15 * * * ?"
+	Time cron "0 55 * * * ?"
 then
-	var ma = Temperature.averageSince(now.minusHours(2), "rrd4j")
+	var ma = Temperature.averageSince(now.minusHours(24), "rrd4j")
 	logInfo("temp.moving.average", "Moving average 24h: " + ma)
 	postUpdate(ma24hRrdTemp, ma)
 	
-	ma = Temperature.averageSince(now.minusHours(4), "rrd4j")
+	ma = Temperature.averageSince(now.minusHours(48), "rrd4j")
 	logInfo("temp.moving.average", "Moving average 48h: " + ma)
 	postUpdate(ma48hRrdTemp, ma) 
 end
 
 rule "Update daily average temperatures"
 when
-	//Time cron noon
-	Time cron "0 5 */4 * * ?" //every 4 hours
+	Time cron noon
+	//Time cron "0 5 */4 * * ?" //every 4 hours
 	//Time cron "0 8 * * * ?"
 then
 	if (c1 > 0) {
@@ -404,8 +422,8 @@ end
 
 rule "Accumulate temperatures"
 when
-	Time cron "0 */30 * * * ?" // every 30 minutes
-	//Time cron "0 5 * * * ?" // every hour
+	//Time cron "0 */30 * * * ?" // every 30 minutes
+	Time cron "0 5 * * * ?" // every hour
 	//Item Temperature received update
 then
 	var value = Temperature.state
