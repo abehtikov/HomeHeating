@@ -37,7 +37,7 @@ Switch CalendarRequestPriority	"Calendar priority"	<calendar> (gHeatingReq) // D
 Number UserRequestMaxDuration	"User request max. duration [%d h]" <clock> (gHeatingReq) // 2-3-4-6-8 h
 String BoilerCtrlMode	"Boiler control mode [%s]"	(gHeatingReq) // manually | by calendar
 DateTime UserRequestExpires	"Manual request mode expires [%1$tH:%1$tM]"	(gHeatingReq) // time when the last heating request command from user will expire
-String BoilerHeatingMode	"Heating mode [MAP(ru.map):%s]"	(gHeatingReq, gBoiler) // status text label read-only: Low temperature, High temperature, Off
+String BoilerHeatingMode	"Heating mode [MAP(ru.map):%s]"	(gHeatingReq) // status text label read-only: Low temperature, High temperature, Off
 
 Switch WarmFloorValveHelper
 /* Heating */
@@ -133,10 +133,29 @@ Number Duration_ALL_40C		"Warm floors & radiators [%.2f h]"	(gHeatingEQ)
 Number Duration_R_70C		"Radiators 70C [%.2f h]"		(gHeatingEQ)
 Number Duration_R_40C		"Radiators 40C [%.2f h]"	(gHeatingEQ)
 
+/* Warm floor comfort hours. User settings */
+Group gWarmFloorComfortHours
+Number wd_mo_hh	"Working days morning [%.1f h]"		(gWarmFloorComfortHours) // from 2:00 till 12:00, 7.5 -> 7:30 AM
+Number wd_ev_hh	"Working days morning [%.1f h]" 	(gWarmFloorComfortHours) // from 14:00 till 24:00
+Number we_mo_hh "Weekends morning [%.1f h]"			(gWarmFloorComfortHours)
+Number we_ev_hh "Weekends evening [%.1f h]"			(gWarmFloorComfortHours)
+
 Number 	Temperature   	"Температура воздуха [%.1f °C]"		<temperature>	(gWeather, gHeatingEQ)	{weather="locationId=home, type=temperature, property=current"}
 Number	Humidity      	"Влажность [%d %%]"       							(gWeather)	{weather="locationId=home, type=athmosphere, property=humidity"}
 Number	AtmPressure_mbar		"Pressure [%.2f mbar]"		(gWeather)		{weather="locationId=home, type=athmosphere, property=pressure"}
 Number	AtmPressure_mmHg	"Атмосферное давление [%d mmHg]" (gWeather)
+
+Group gMovingAverage (gStatus)
+/* Moving average */
+Number ma24hTemp	"за последние 24 ч. [%.2f °C]"	<temperature>	(gWeather, gMovingAverage)
+Number ma48hTemp	"за последние 48 ч. [%.2f °C]"	<temperature>	(gWeather, gMovingAverage)
+String tempAccum24h	"Накоплено за 24 ч. [%s]"	(gStatus)
+String tempAccum48h	"Накоплено за 48 ч. [%s]"	(gStatus)
+
+Number ma24hRrdTemp	"RRD 24 ч. [%.2f °C]"	<temperature>	(gWeather, gMovingAverage)
+Number ma48hRrdTemp	"RRD 48 ч. [%.2f °C]"	<temperature>	(gWeather, gMovingAverage)
+Number AmbientTempRrd "Rrd temperature [%.2f C]" (gWeather)
+
 
 /* NTP binding demo item */
 DateTime		Date			"Date [%1$tA, %1$td.%1$tm.%1$tY]"	<calendar>	(gStatus)	{ ntp="Europe/Minsk:ru_RU" } 	

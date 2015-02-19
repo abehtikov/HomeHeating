@@ -14,6 +14,12 @@ var Timer warmFloorTimer = null
 
 val DateTimeType expired = new DateTimeType()
 
+var Number t_fio24h = 0
+var Number t_fio48h = 0
+var Number t_owm24h = 0
+// counters
+var int c1 = 0
+var int c2 = 0
 
 rule "Calculate current heating power demand"
 when
@@ -81,10 +87,7 @@ then
 		timer.cancel
 		timer = null
 	}
-	logDebug("heating.config", "Setting up default heating parameters")
-	if (UserRequestMaxDuration.state == Uninitialized) {
-		postUpdate(UserRequestMaxDuration, 4) // hours
-	}
+	callScript("initialize")
 	
 	// after system reboot boiler control mode is restored back to calendar
 	postUpdate(UserHeatingRequest, "AUTO")
@@ -266,8 +269,8 @@ then
 			// validate command
 			sendCommand(BoilerHeatingMode, receivedCommand)
 		
-		} else if (CalendarRequestPriority.state == ON) {
-			logDebug("heating.calendar.redirect", "Recieved {} when priority is ON", receivedCommand)
+		} else if (CalendarRequestPriority.state == ON && BoilerHeatingMode.state == "Off") {
+			logDebug("heating.calendar.takeover", "Received {} when calendar priority is ON and boiler is Off", receivedCommand)
 			// switch Manual to Calendar/AUTO
 			sendCommand(UserHeatingRequest, "AUTO")
 		} else {
@@ -356,4 +359,68 @@ when
 then
 	callScript("demo")
 end
+
+rule "Moving average ambient temperature"
+when
+	Time cron "0 15 * * * ?"
+then
+	var ma = Temperature.averageSince(now.minusHours(2), "rrd4j")
+	logInfo("temp.moving.average", "Moving average 24h: " + ma)
+	postUpdate(ma24hRrdTemp, ma)
+	
+	ma = Temperature.averageSince(now.minusHours(4), "rrd4j")
+	logInfo("temp.moving.average", "Moving average 48h: " + ma)
+	postUpdate(ma48hRrdTemp, ma) 
+end
+
+rule "Update daily average temperatures"
+when
+	//Time cron noon
+	Time cron "0 5 */4 * * ?" //every 4 hours
+	//Time cron "0 8 * * * ?"
+then
+	if (c1 > 0) {
+		val avg24h = t_fio24h / c1
+		logInfo("temp.daily.average", 
+			"For the last 24 hours: {} / {} = {}",
+			t_fio24h, c1, avg24h)
+		postUpdate(ma24hTemp, avg24h)
+	}
+	c1 = 0
+	t_fio24h = 0
+	
+	if (c2 > 24) {
+		// update 48h average
+		val avg48h = t_fio48h / c2
+		logInfo("temp.daily.average", 
+			"For the last 24 hours: {} / {} = {}",
+			t_fio48h, c2, avg48h)
+		postUpdate(ma48hTemp, avg48h)
+		
+		c2 = 0
+		t_fio48h = 0
+	}
+end
+
+rule "Accumulate temperatures"
+when
+	Time cron "0 */30 * * * ?" // every 30 minutes
+	//Time cron "0 5 * * * ?" // every hour
+	//Item Temperature received update
+then
+	var value = Temperature.state
+	postUpdate(AmbientTempRrd, value)
+	
+	c1 = c1 + 1
+	c2 = c2 + 1
+	t_fio24h = t_fio24h + (value as DecimalType).doubleValue
+	t_fio48h = t_fio48h + (value as DecimalType).doubleValue
+	
+	var String text = String::format("(step: %d, avg:%.2f)", c1, t_fio24h/c1)
+	postUpdate(tempAccum24h, text)
+	postUpdate(tempAccum48h, String::format("(step: %d, avg:%.2f)", c2, t_fio48h/c2))
+	logInfo("daily.average", "accumulate value: {}", value)
+end
+
+
 

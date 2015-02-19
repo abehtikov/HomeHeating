@@ -40,11 +40,19 @@ sitemap brodok label="Main Menu"
 		
 	}
 	*/
-	Frame label="Boiler control" {
+	Frame label="Heating control" {
 		Group item=gHeatingReq label="Setup" icon="config" {
-			Switch item=CalendarRequestPriority
-			Setpoint item=UserRequestMaxDuration minValue=2 maxValue=14 step=1
-			Selection item=UserHeatingRequest label="Change heating mode" mappings=[Off="Выключить", HI="Радиаторы 70C", LO_R="Радиаторы 40С", LO_ALL="Теплый пол и радиаторы", AUTO="По графику"] //visibility=[BoilerHeatingMode=="Off", CalendarRequestPriority==OFF, BoilerHeatingMode=="Uninitialized"]
+			Frame label="Boiler manual control" {
+				Switch item=CalendarRequestPriority
+				Setpoint item=UserRequestMaxDuration minValue=2 maxValue=14 step=1
+				Selection item=UserHeatingRequest label="Change heating mode" mappings=[Off="Выключить", HI="Радиаторы 70C", LO_R="Радиаторы 40С", LO_ALL="Теплый пол и радиаторы", AUTO="По графику"] //visibility=[BoilerHeatingMode=="Off", CalendarRequestPriority==OFF, BoilerHeatingMode=="Uninitialized"]
+			}
+			Frame label="Warm floor comfort hours setup" {
+				Setpoint item=wd_mo_hh minValue=2 maxValue=12 step=0.5
+				Setpoint item=wd_ev_hh minValue=14 maxValue=24 step=0.5
+				Setpoint item=we_mo_hh minValue=2 maxValue=12 step=0.5
+				Setpoint item=we_ev_hh minValue=14 maxValue=24 step=0.5
+			}
 		}
 		Text item=BoilerCtrlMode  // Calendar/manual
 		Text item=UserRequestExpires visibility=[BoilerCtrlMode==Manual] // time when manual mode is over
@@ -68,7 +76,19 @@ sitemap brodok label="Main Menu"
 				Text item=Weather_LastUpdate visibility=[Weather_LastUpdate>30] valuecolor=[Weather_LastUpdate>120="orange", Weather_LastUpdate>300="red"]
 			}
 		}
-		Text item=Temperature
+		Text item=Temperature {
+			Frame label="Скользящее среднее" {
+				Text item=ma24hTemp
+				Text item=ma48hTemp
+				Text item=tempAccum24h
+				Text item=tempAccum48h
+				Text item=ma24hRrdTemp
+				Text item=ma48hRrdTemp
+			}
+			//Frame label="Ambient temperature chart"{
+				//Chart item=Temperature service="rrd4j" period=D refresh=60
+			//}
+		}
 		Text item=Humidity
 		Text item=AtmPressure_mmHg
 	}

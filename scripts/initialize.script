@@ -1,0 +1,18 @@
+/*
+ * Initialize default parameter values here.
+ * For ex. set war floor comfort hours
+ */
+
+logDebug("warm.floor.comfort", "Value state: " + wd_mo_hh.state)
+
+if (wd_mo_hh.state == Uninitialized) {
+	postUpdate(wd_mo_hh, 7.5) 	// 7:30
+	postUpdate(wd_ev_hh, 19.5) 	//19:30
+	postUpdate(we_mo_hh, 9.5)	// 9:30
+	postUpdate(we_ev_hh, 19)	//19:00
+}
+
+logDebug("heating.config", "Setting up default heating parameters")
+if (UserRequestMaxDuration.state == Uninitialized) {
+	postUpdate(UserRequestMaxDuration, 4) // hours
+}

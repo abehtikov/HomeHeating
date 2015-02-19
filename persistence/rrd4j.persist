@@ -9,13 +9,14 @@ Strategies {
 Items {
 	//DemoSwitch,NoOfLights,Window_GF_Toilet,Heating* : strategy = everyChange, everyMinute, restoreOnStartup
 	gHeatingParams* : strategy = everyChange, everyDay, restoreOnStartup
-	ThermoValve*, Heating_Boiler_Mode, UserRequestMaxDuration	: strategy = everyChange, restoreOnStartup
+	gBoiler*, ThermoValve*, gMovingAverage*, gWarmFloorComfortHours*	: strategy = everyChange, restoreOnStartup
 	
-	// let's only store temperature values in rrd
+	// Ambient temperature persistence
 	Temperature : strategy = everyHour, restoreOnStartup
 	
 	Pi_Temperature	: strategy = everyChange, everyHour
 	TempSensor* : strategy = everyHour, restoreOnStartup
 	
-	CalendarHeatingRequest, UserHeatingRequest, BoilerHeatingMode	: strategy = everyChange
+	// String items cannot be stored to rrd, can they?
+	//CalendarHeatingRequest, UserHeatingRequest, BoilerHeatingMode	: strategy = everyChange
 }
