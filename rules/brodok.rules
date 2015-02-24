@@ -23,16 +23,16 @@ var int c2 = 0
 
 rule "Calculate current heating power demand"
 when
-	Item HeatLoadFactor changed or
-	Item HeatCompensation changed or
-	Item Temperature changed
+	//Item HeatLoadFactor changed or
+	//Item HeatCompensation changed or
+	Item ma48hRrdTemp changed
 then
 	var lf = (HeatLoadFactor.state as DecimalType).doubleValue
 	var ambTemp 
-	if (Temperature.state instanceof DecimalType) {
-		ambTemp = (Temperature.state as DecimalType).doubleValue
+	if (ma48hRrdTemp.state instanceof DecimalType) {
+		ambTemp = (ma48hRrdTemp.state as DecimalType).doubleValue
 	} else {
-		ambTemp = 0
+		ambTemp = (MonthAverageTemp.state as DecimalType).doubleValue
 	}
 	
 	var roomTempAvg = (TempSensor.state as DecimalType).doubleValue
@@ -47,7 +47,8 @@ then
 	if (processUpdate == 1) {
 		//postUpdate(HeatPowerDemand_Current, (demand/1000))	
 		//postUpdate(PowerDemandLastUpdate, new DateTimeType())
-		HeatPowerDemand_Current.postUpdate(demand/1000)
+		//HeatPowerDemand_Current.postUpdate(demand/1000)
+		postUpdate(HeatPowerDemand_DailyAvg, demand/1000)
 		PowerDemandLastUpdate.postUpdate(new DateTimeType())
 	}
 end
@@ -114,13 +115,11 @@ then
 end
 
 
+/*
+ * Deprecated
+ *
 rule "Heating Power demand persist to Google"
 when
-	//Time is noon or // recalculate power demand once a day
-	//Time cron "0 */6 * * * ?" // every 5 min.
-	Item LO_HI_Ratio changed or
-	
-	// when Moving average calculated
 	Item ma24hTemp received update
 then
 	val t24ma = (ma24hTemp.state as DecimalType).doubleValue
@@ -166,25 +165,7 @@ then
 	var winCurlCmd = String::format("cmd.exe /c curl -k \"%1$s?" +
 		"Timestamp=%2$tQ&PowerDemand=%3$.3f&all40=%4$.3f&r70=%5$.3f&r40=%6$.3f\"",
 		url, new Date(), demand, all40c, r70c, r40c)
-/*	
-	var curlCommand = String::format(
-		// linux specific call
-		"/usr/bin/curl -k \"" + //1
-		"%1$s?Timestamp=%9$tQ" + // 1 & 9
-		"&RoomTemp=%2$.2f" + //2
-		"&AmbientTemp=%3$.2f" + //3
-		"&HeatLoadFactor=%4$d" + //4
-		"&HeatCompensation_W=%5$d" + //5
-		"&boilerMaxPower_kW=%6$d" + //6
-		"&dailyAvgPowerDemand_kW=%7$.3f" + //7
-		"&LO_HI_Ratio=%8$d" + //8
-		"&ALL_40C=%10$.3f" + //10
-		"&R_70C=%11$.3f" + //11
-		"&R_40C=%12$.3f\"", //12
-		GoogleScriptURL.state, roomTempAvg, dailyAvgAmbientTemp, lf, hc, 
-		maxBoilerPower, demand, lhRatio, new Date(), all40c, r70c, r40c
-		)
-*/
+
 	var curlCommand = String::format("/usr/bin/curl -k \"%1$s?" +
 		"Timestamp=%2$tQ&PowerDemand=%3$.3f&all40=%4$.3f&r70=%5$.3f&r40=%6$.3f\"",
 		url, new Date(), demand, all40c, r70c, r40c
@@ -199,6 +180,7 @@ then
 		executeCommandLine(curlCommand, 2000)	
 	}
 end
+*/
 
 rule "User heating request change"
 when
@@ -266,12 +248,6 @@ then
 	} 
 end
 
-rule "Heating control back to calendar"
-when
-	Item BoilerCtrlMode changed from "Manual" to "Calendar"
-then
-	logDebug("heating.man2calendar", "confirmed")
-end
 
 rule "Calendar heating event"
 when
@@ -290,7 +266,7 @@ then
 			sendCommand(UserHeatingRequest, "AUTO")
 		} else {
 			logInfo("calendar.request", "Boiler control mode: {}, heating mode: {}. Ignore command: {}", 
-				BoilerControlMode.state, BoilerHeatingMode.state, cmd)
+				BoilerCtrlMode.state, BoilerHeatingMode.state, cmd)
 		}
 	} else if (cmd != "CAL") {
 		logInfo("calendar.event", "Unsupported calendar command event: {}", cmd)
@@ -369,18 +345,10 @@ then
 	postUpdate(WarmFloorValveHelper, ON)
 end
 
-/*
-rule "Power demand changed"
-when
-	Item HeatPowerDemand_Current changed
-then
-	callScript("demo")
-end
-*/
 
-rule "Moving average ambient temperature"
+rule "Average ambient temperature"
 when
-	Time cron "0 55 * * * ?"
+	Time cron "0 0 */2 * * ?"
 then
 	var ma = Temperature.averageSince(now.minusHours(24), "rrd4j")
 	logInfo("temp.moving.average", "Moving average 24h: " + ma)
@@ -391,11 +359,11 @@ then
 	postUpdate(ma48hRrdTemp, ma) 
 end
 
+
+/*
 rule "Update daily average temperatures"
 when
 	Time cron noon
-	//Time cron "0 5 */4 * * ?" //every 4 hours
-	//Time cron "0 8 * * * ?"
 then
 	if (c1 > 0) {
 		val avg24h = t_fio24h / c1
@@ -422,7 +390,6 @@ end
 
 rule "Accumulate temperatures"
 when
-	//Time cron "0 */30 * * * ?" // every 30 minutes
 	Time cron "0 5 * * * ?" // every hour
 	//Item Temperature received update
 then
@@ -440,5 +407,5 @@ then
 	logInfo("daily.average", "accumulate value: {}", value)
 end
 
-
+*/
 

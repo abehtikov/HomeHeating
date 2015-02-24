@@ -3,20 +3,19 @@ sitemap brodok label="Main Menu"
 	Frame label="Heating" {
 		Group item=Heating label="All Heating" icon="firstfloor"
 		Group item=gBoiler label="Boiler" icon="groundfloor"
-		Group item=gPresense label="Presense" icon="garden" 
+		//Group item=gPresense label="Presense" icon="garden" 
 		Group item=gHeatingEQ label="Heat Power Demand" icon="pie" {
 			Frame label="Model parameters" {
 				Setpoint item=HeatLoadFactor minValue=90 maxValue=125 step=5.0
 				Setpoint item=HeatCompensation minValue=300 maxValue=800 step=100
 				Setpoint item=ActiveBoilerHeatingElements minValue=1 maxValue=6 step=1
-				Setpoint item=LO_HI_Ratio minValue=50 maxValue=75 step=5	
+				//Setpoint item=LO_HI_Ratio minValue=50 maxValue=75 step=5	
 			}
 			Frame label="Other" {
 				Text item=TempSensor
-				Text item=Temperature label="Outside temperature [%.1f °C]"
-				Text item=HeatPowerDemand_Current
+				Text item=ma48hRrdTemp label="2 days average [%.2f °C]"
+				Text item=HeatPowerDemand_DailyAvg label="Estimated power demand [%.3f kW]"
 				Text item=PowerDemandLastUpdate
-				Text item=HeatPowerDemand_DailyAvg
 				//Text item=GoogleScriptURL
 			}
 			Frame label="Estimated daily heating cycles" {
@@ -60,7 +59,7 @@ sitemap brodok label="Main Menu"
 	}
 	
 	Frame label="Температура помещения" {
-		Group item=TempSensor label="Датчики температуры помещеня" icon="temperature"
+		Group item=TempSensor label="Датчики температуры помещения" icon="temperature"
 		Group item=gSetPoints label="Уставки температур" icon="cellar"	{
 			Setpoint item=TWF_Kitchen_SP minValue=18 maxValue=23 step=1.0
 			Setpoint item=TWF_Corridor_SP minValue=18 maxValue=23 step=1.0
@@ -77,11 +76,10 @@ sitemap brodok label="Main Menu"
 			}
 		}
 		Text item=Temperature {
+			Frame label="This month average" {
+				Text item=MonthAverageTemp
+			}
 			Frame label="Скользящее среднее" {
-				Text item=ma24hTemp
-				Text item=ma48hTemp
-				Text item=tempAccum24h
-				Text item=tempAccum48h
 				Text item=ma24hRrdTemp
 				Text item=ma48hRrdTemp
 			}
