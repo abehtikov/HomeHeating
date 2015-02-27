@@ -2,7 +2,19 @@ sitemap brodok label="Main Menu"
 {
 	Frame label="Heating" {
 		Group item=Heating label="All Heating" icon="firstfloor"
-		Group item=gBoiler label="Boiler" icon="groundfloor"
+		Group item=gBoiler label="Boiler" icon="groundfloor" {
+			Frame label="Boiler heating mode" {
+				Switch item=Heating_Boiler_HI
+				Switch item=Heating_Boiler_LO
+				Text item=BoilerHeatingMode label="Mode [%s]" valuecolor=[Off="lightgray",HI="red",LO_R="orange",LO_ALL="orange"]
+			}
+			Frame label="Boiler parameters" {
+				Text item=ActiveBoilerHeatingElements
+			}
+			Frame label="График отопления" {
+				Webview item=GHeatingCalendar height=10 url="https://www.google.com/calendar/embed?showTitle=0&amp;showNav=0&amp;showPrint=0&amp;mode=AGENDA&amp;height=300&amp;wkst=2&amp;bgcolor=%23FFFFFF&amp;src=ovgvjgns0to17dfbaikikbsuf4%40group.calendar.google.com&amp;color=%230F4B38&amp;ctz=Europe%2FMinsk"
+			}
+		}
 		//Group item=gPresense label="Presense" icon="garden" 
 		Group item=gHeatingEQ label="Heat Power Demand" icon="pie" {
 			Frame label="Model parameters" {
@@ -53,7 +65,7 @@ sitemap brodok label="Main Menu"
 				Setpoint item=we_ev_hh minValue=14 maxValue=24 step=0.5
 			}
 		}
-		Text item=BoilerCtrlMode  // Calendar/manual
+		Text item=BoilerCtrlMode // Calendar/manual
 		Text item=UserRequestExpires visibility=[BoilerCtrlMode==Manual] // time when manual mode is over
 		Text item=BoilerHeatingMode valuecolor=[Off="lightgray",HI="red",LO_R="orange",LO_ALL="orange"] // HI / LO etc.
 	}

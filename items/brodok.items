@@ -38,6 +38,7 @@ Number UserRequestMaxDuration	"User request max. duration [%d h]" <clock> (gHeat
 String BoilerCtrlMode	"Boiler control mode [%s]"	(gHeatingReq) // manually | by calendar
 DateTime UserRequestExpires	"Manual request mode expires [%1$tH:%1$tM]"	(gHeatingReq) // time when the last heating request command from user will expire
 String BoilerHeatingMode	"Heating mode [MAP(ru.map):%s]"	(gHeatingReq) // status text label read-only: Low temperature, High temperature, Off
+String GHeatingCalendar	"Heating schedule" (gStatus)
 
 Switch WarmFloorValveHelper
 /* Heating */
@@ -59,14 +60,14 @@ Number HV_Corridor_Toggle_Counter	"Towel warmer toggles [(%d)]"				(ValveToggleC
 /* This mode is secondary and controlled by room thermostat. Boiler heating supply temperature should be set to 35-45 C, 
  * to meet warm floor heating requirements. By default: OFF
  */
-Switch Heating_Boiler_LO	"Low temperature boiler mode" 		(gBoiler)		{gpio="pin:10"} // via optocoupler to boiler RP switch 
+Switch Heating_Boiler_LO	"LO (40 °C)" 		(gBoiler)		{gpio="pin:10"} // via optocoupler to boiler RP switch 
 
 /* This mode is primary and is controlled by openhab server. In this mode only room radiators are expected to operate,
  * and any warm floor heating valves should be closed. The temperature of heating medium is set-up manually in the boiler's service menu.
  * Default state: OFF
  * GPIO -> Optocoupler -> boiler WZ contact (COM-NO)
  */
-Switch Heating_Boiler_HI	"HI temperature boiler mode"		(gBoiler)		{gpio="pin:7"}
+Switch Heating_Boiler_HI	"HI (70 °C)"		(gBoiler)		{gpio="pin:7"}
 
 // used to open/close all warm floor valves when boiler is in LO mode. If controller is failed, the default relay is closed (NC-COM are used)
 // Default state: ON
