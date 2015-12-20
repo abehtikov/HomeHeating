@@ -12,7 +12,7 @@ Items {
 	gBoiler*, ThermoValve*, gMovingAverage*, gWarmFloorComfortHours*	: strategy = everyChange, restoreOnStartup
 	
 	// Ambient temperature persistence
-	Temperature : strategy = everyMinute, everyHour, restoreOnStartup
+	Temperature : strategy = everyChange, everyHour, restoreOnStartup
 	
 	Pi_Temperature	: strategy = everyChange, everyHour
 	TempSensor* : strategy = everyHour, restoreOnStartup
