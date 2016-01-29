@@ -77,6 +77,9 @@ sitemap brodok label="Main Menu"
 				Setpoint item=UserRequestMaxDuration minValue=2 maxValue=14 step=1
 				Selection item=UserHeatingRequest label="Change heating mode" mappings=[Off="Выключить", HI="Радиаторы 70C", HI_B="Спальня 70C", LO_50R="Радиаторы 50С", LO_50B="Спальня 50С", LO_ALL="Теплый пол и спальня", AUTO="По графику"] //visibility=[BoilerHeatingMode=="Off", CalendarRequestPriority==OFF, BoilerHeatingMode=="Uninitialized"]
 			}
+			Frame label="Radiators" {
+				Setpoint item=Radiators_PWM_Cycle minValue=30 maxValue=240 step=30
+			}
 			Frame label="Warm floor comfort hours setup" {
 				Setpoint item=wd_mo_hh minValue=2 maxValue=12 step=0.5
 				Setpoint item=wd_ev_hh minValue=14 maxValue=24 step=0.5

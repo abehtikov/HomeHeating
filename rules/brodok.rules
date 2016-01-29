@@ -96,7 +96,7 @@ then
 	postUpdate(LivingRoom_PWM_SP, 50)
 	postUpdate(Kitchen_PWM_SP, 80)
 	postUpdate(Heating_Valve_Kitchen, OFF) // normally closed
-	postUpdate(Radiators_PWM_Cycle, 50) // 120 (2h) by default
+	postUpdate(Radiators_PWM_Cycle, 120) // 120 (2h) by default
 	
 	postUpdate(BoilerEventPower, 0)
 	postUpdate(HeatingEventPeriod_m, 0)
