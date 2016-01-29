@@ -9,12 +9,14 @@ Group Heating	(All)
 Group:Number:AVG 				TempSensor	"Avg. Room Temperature [%.1f °C]" 	<temperature>	(gStatus)
 
 Group:Switch:OR(ON, OFF) 		WarmFloorValve	"Warm floor loops [(%d)]"			(All)
-Group:Switch:OR(ON, OFF)		ThermoValve		"Thermo driven valves [(%d)]"		(gStatus)
+Group:Switch:OR(ON, OFF)		ThermoValve		"Клапаны коллектора [%d / 4]"		(gStatus)
 Group:Number:SUM				ValveToggleCycle 	"Total valve toggle cycles [(%d)]"	(gStatus)
 Group:Switch:OR(ON, OFF)		RelaysGPIO		"Реле управления котлом и гребенкой [%d]"
 
 Group gBoiler		(gStatus)
 Group gSetPoints	(gStatus)
+Group gPWM			(gStatus)
+Group gTrend	(gStatus) // check boiler trends during test period
 
 // initialize values after in a short delay after System startup.
 Switch AfterStartup
@@ -27,11 +29,28 @@ Number OvenStatus_LSB		"Register 2. Counter [(%d)]"		(Modbus)	{modbus="oven:2"}
 Switch OvenSwitch 			"Oven switch"						(Modbus)	{modbus="oven:1"}
 */
 
+// Boiler trends
+Number trBoilerTemp	"Boiler temperature [%d C]" (gTrend) // 20 - 40 - 50 - 70 - 80
+Number trValveLiv	"Liv room valve 0: OFF, 5: ON"	(gTrend)	// 0 - OFF, 5 - ON , Living Room valve
+Number trValveKit	"Kitchen valve 10: OFF, 15: ON" (gTrend)	// 10 - OFF, 15 - ON, Kitchen valve 
+Number trValveKProxy	"Kitchen valve proxy 20: OFF, 25: ON" (gTrend)	// Kitchen valve proxy 
+
+/* Owntracks */
+String Location_Sveta_Phone (gPresense) {mqtt="<[cloud-mqtt:owntracks/sveta:state:JS(mqttitude-coordinates.js)]"}
+
+/* Network health status */
+Group:Switch:OR(ON, OFF) gNetworkHealth "Network health [%d / 3]" (gStatus)
+Switch nhMqtt 		"cloudmqtt.com [%s]"		(gNetworkHealth) { nh="m20.cloudmqtt.com:10350" }
+Switch nhCalendar	"calendar.google.com [%s]"	(gNetworkHealth) { nh="googleapis.com:443" }
+Switch nhForecastIo "api.forecast.io [%s]"		(gNetworkHealth) { nh="api.forecast.io" }
 
 /* New Heating request state logic */
 Group gHeatingReq
+Group gHEvent // heating event meta data
 
-String CalendarHeatingRequest	"Calendar request [%s]"	(gHeatingReq)	{mqtt="<[cloud-mqtt:brodok/heating/req:command:REGEX((HI|LO_R|LO_ALL|Off|CAL))]"}
+//String CalendarHeatingRequest	"Calendar request [%s]"	(gHeatingReq)	{mqtt="<[cloud-mqtt:brodok/heating/req:command:REGEX((HI|HI_B|LO_R|LO_50R|LO_50B|LO_ALL|Off|CAL))]"}
+String CalendarHeatingRequest	"Calendar request [%s]"	(gHeatingReq)	{mqtt="<[cloud-mqtt:brodok/heating/event:command:JSONPATH($.type)]"}
+
 String UserHeatingRequest	"User request [%s]"	(gHeatingReq) // sitemap GUI binding selection
 Switch CalendarRequestPriority	"Calendar priority"	<calendar> (gHeatingReq) // Does calendar request override user request?
 Number UserRequestMaxDuration	"User request max. duration [%d h]" <clock> (gHeatingReq) // 2-3-4-6-8 h
@@ -40,16 +59,30 @@ DateTime UserRequestExpires	"Manual request mode expires [%1$tH:%1$tM]"	(gHeatin
 String BoilerHeatingMode	"Heating mode [MAP(ru.map):%s]"	(gHeatingReq) // status text label read-only: Low temperature, High temperature, Off
 String GHeatingCalendar	"Heating schedule" (gStatus)
 
+Number BoilerEventPower	"Boiler power [%.2f kW]"	(gBoiler, gHEvent)	//{mqtt="<[cloud-mqtt:brodok/heating/event:state:JSONPATH($.power)]"}
+Number HeatingEventPeriod_m	"Event duration [%d min]" (gHeatingReq, gHEvent)	//{mqtt="<[cloud-mqtt:brodok/heating/event:state:JSONPATH($.duration)]"}
+
+String HeatingEventRawData	"Heating event JSON [%s]" (gHeatingReq, gHEvent)	{mqtt="<[cloud-mqtt:brodok/heating/event:state:default]"}
+
 Switch WarmFloorValveHelper
 /* Heating */
 
 // Towel heater valve is normally open. Switch position:ON is a default state. By default: OFF
-Switch Heating_Valve_Towel_Warmer	 	"Towel warmer switch" 			<heating>	(Heating, ThermoValve, RelaysGPIO)	{gpio="pin:17"} // Relay #1
-Number HV_Towel_Warmer_Toggle_Counter	"Towel warmer toggles [(%d)]"				(ValveToggleCycle)
+//Switch Heating_Valve_Towel_Warmer	 	"Towel warmer switch" 			<heating>	(Heating, ThermoValve, RelaysGPIO)	{gpio="pin:17"} // Relay #1
+//Number HV_Towel_Warmer_Toggle_Counter	"Towel warmer toggles [(%d)]"				(ValveToggleCycle)
+Switch Heating_Valve_LivingRoom		"Living room valve"	<heating>		(Heating, ThermoValve, RelaysGPIO, gPWM)	{gpio="pin:17"} // Relay #1
+//Number PWM_LivingRoom_Loop			"Living room PWM [%d %%]"	(Heating)		{mqtt="<[cloud-mqtt:brodok/heating/pwm/livingroom:state:default]"}
+Switch LivingRoom_PWM_PV		"Living room PWM PV [%s]"	(Heating, gPWM)
+Number LivingRoom_PWM_SP		"Living room PWM duty cycle (setpoint) [%d %%]" (Heating, gPWM, gHEvent)	//{mqtt="<[cloud-mqtt:brodok/heating/event:state:JSONPATH($.pwm)]"}
+Switch LivingRoom_PWM_enabled	"Living room PWM enabled [%s]"			(Heating, gPWM) // enable only when LO_50R or HI event(s) is up
+Number Radiators_PWM_Cycle		"Radiators PWM cycle [%d min]"			(Heating, gPWM) // 20min -- 240 min (4h)
 
 // Warm floor valves are normally closed. Switch position=ON -> opens the valve (3 min. delay) and it's heating loop
-Switch Heating_Valve_Kitchen 	"Kitchen" 		<heating>	(Heating, WarmFloorValve, ThermoValve, RelaysGPIO)	{gpio="pin:27 activelow:yes"} // Relay #2
+Switch Heating_Valve_Kitchen 	"Kitchen" 		<heating>	(Heating, /*WarmFloorValve, */ThermoValve, RelaysGPIO)	{gpio="pin:27 activelow:yes"} // Relay #2
+Switch Kitchen_Valve_Proxy		"Kitchen valve proxy" <heating> (Heating, WarmFloorValve) // accepts requests
 Number HV_Kitchen_Toggle_Counter	"Kitchen valve toggles [(%d)]"				(ValveToggleCycle)
+Number Kitchen_PWM_SP		"Kitchen underfloor PWM duty cycle [%d %%]"	(Heating, gPWM, gHEvent)	
+Switch Kitchen_PWM_PV		"Kitchen PWM PV [%s]" (Heating, gPWM)	
 
 Switch Heating_Valve_Bath_floor	"Bath Floor" 	<heating>	(Heating, WarmFloorValve, ThermoValve, RelaysGPIO)	{gpio="pin:22 activelow:yes"} // Relay #3 
 Number HV_Bath_Floor_Toggle_Counter	"Bath floor valve toggles [(%d)]"				(ValveToggleCycle)
@@ -60,14 +93,14 @@ Number HV_Corridor_Toggle_Counter	"Towel warmer toggles [(%d)]"				(ValveToggleC
 /* This mode is secondary and controlled by room thermostat. Boiler heating supply temperature should be set to 35-45 C, 
  * to meet warm floor heating requirements. By default: OFF
  */
-Switch Heating_Boiler_LO	"LO (40 °C)" 		(gBoiler)		{gpio="pin:10"} // via optocoupler to boiler RP switch 
+Switch Heating_Boiler_LO	"LO (50 °C) [%s]" 	<light>	(gBoiler)		{gpio="pin:10"} // via optocoupler to boiler RP switch 
 
 /* This mode is primary and is controlled by openhab server. In this mode only room radiators are expected to operate,
  * and any warm floor heating valves should be closed. The temperature of heating medium is set-up manually in the boiler's service menu.
  * Default state: OFF
  * GPIO -> Optocoupler -> boiler WZ contact (COM-NO)
  */
-Switch Heating_Boiler_HI	"HI (70 °C)"		(gBoiler)		{gpio="pin:7"}
+Switch Heating_Boiler_HI	"HI (70 °C) [%s]"	<light>	(gBoiler)		{gpio="pin:7"}
 
 // used to open/close all warm floor valves when boiler is in LO mode. If controller is failed, the default relay is closed (NC-COM are used)
 // Default state: ON
@@ -122,8 +155,7 @@ Group gHeatingParams (gHeatingEQ)
 Number HeatPowerDemand_Current	"Current heat power demand [%.2f kW]"	(gHeatingEQ)
 Number HeatPowerDemand_DailyAvg	"Daily heat power demand [%.2f kW]"	(gHeatingEQ)
 Number HeatLoadFactor		"Heating load factor [%d W/°C]"	(gHeatingEQ, gHeatingParams)
-// This ratio corresponds to underfloor heating vs. radiators heating power demand. Should be within 0,5..0,75 range
-Number LO_HI_Ratio			"LO/HI power ratio [%d %%]"			(gHeatingEQ, gHeatingParams)
+
 Number HeatCompensation		"Heat compensation [%d W]"			(gHeatingEQ, gHeatingParams)
 // Persistable
 Number ActiveBoilerHeatingElements	"Boiler's active heating elements [%d]"		(gBoiler, gHeatingEQ, gHeatingParams)
@@ -133,6 +165,12 @@ DateTime PowerDemandLastUpdate	"Current demand last update: [%1$tA,  %1$tH:%1$tM
 Number Duration_ALL_40C		"Warm floors & radiators [%.2f h]"	(gHeatingEQ)
 Number Duration_R_70C		"Radiators 70C [%.2f h]"		(gHeatingEQ)
 Number Duration_R_40C		"Radiators 40C [%.2f h]"	(gHeatingEQ)
+
+Group gDailyMeters	"Daily meters as is"
+Number LO_R_dailyMeter	"Radiators 40C [%d s]"	(gDailyMeters)
+Number HI_dailyMeter	"Radiators 70C [%d s]"	(gDailyMeters)
+Number LO_ALL_dailyMeter	"Warm floors & Radiators [%d s]"	(gDailyMeters)
+Number PowerConsumptionAsIs	"Потребление фактически [%.2f kWh]" (gDailyMeters)
 
 /* Warm floor comfort hours. User settings */
 Group gWarmFloorComfortHours
@@ -149,14 +187,15 @@ Number	MonthAverageTemp	"Средне-климатическая t месяца 
 
 Group gMovingAverage (gStatus)
 /* Moving average */
+/*
 Number ma24hTemp	"за последние 24 ч. [%.2f °C]"	<temperature>	(gWeather, gMovingAverage)
 Number ma48hTemp	"за последние 48 ч. [%.2f °C]"	<temperature>	(gWeather, gMovingAverage)
 String tempAccum24h	"Накоплено за 24 ч. [%s]"	(gStatus)
 String tempAccum48h	"Накоплено за 48 ч. [%s]"	(gStatus)
-
+*/
 Number ma24hRrdTemp	"RRD 24 ч. [%.2f °C]"	<temperature>	(gWeather, gMovingAverage)
 Number ma48hRrdTemp	"RRD 48 ч. [%.2f °C]"	<temperature>	(gWeather, gMovingAverage)
-Number AmbientTempRrd "Rrd temperature [%.2f C]" (gWeather)
+//Number AmbientTempRrd "Rrd temperature [%.2f C]" (gWeather)
 
 
 /* NTP binding demo item */
@@ -169,16 +208,3 @@ DateTime CivilDawn_Time  		"Заря [%1$tH:%1$tM]" 				<clock>		(gStatus)	{astr
 DateTime CivilDusk_Time  		"Гражд. сумерки [%1$tH:%1$tM]" 		<clock>		(gStatus)	{astro="planet=sun, type=civilDusk, property=end"}
 
 
-/* Demo items */
-Switch DemoSwitch				"Switch"
-Dimmer DimmedLight				"Dimmer [%d %%]"		<slider>
-Color  RGBLight					"RGB Light"				<slider>
-Rollershutter DemoShutter	 	"Roller Shutter"
-Dimmer DemoBlinds			 	"Blinds [%d %%]"		<rollershutter>
-Number Scene_General			"Scene"					<sofa>
-Number Radio_Station			"Radio"					<network>
-Dimmer Volume 					"Volume [%.1f %%]"
-Number Temperature_Setpoint		"Temperature [%.1f °C]" <temperature>
-
-String UnknownDevices    "Unknown Devices in Range: [%s]" { bluetooth="?" }
-Number NoOfPairedDevices "Paired Devices in Range: [%d]"  { bluetooth="!" }

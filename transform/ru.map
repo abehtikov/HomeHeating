@@ -2,10 +2,13 @@
 OPEN=НЕТ
 undefined=неизвестно
 -=Неизвестно
-HI=Радиаторы 70С
+HI=Radiators_70C
+HI_B=Bedroom_70C
 LO_R=Радиаторы 40С
-LO_ALL=Теплые полы и радиаторы
-Off=Выкл
+LO_50R=Radiators_50C
+LO_50B=Bedroom_50C
+LO_ALL=Underfloor heating
+Off=OFF
 AUTO=По графику
 Manual=Ручной
 Calendar=По календарю

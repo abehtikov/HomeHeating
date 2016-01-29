@@ -16,3 +16,9 @@ logDebug("heating.config", "Setting up default heating parameters")
 if (UserRequestMaxDuration.state == Uninitialized) {
 	postUpdate(UserRequestMaxDuration, 4) // hours
 }
+
+if (HI_dailyMeter.state == Uninitialized) {
+	postUpdate(HI_dailyMeter, 0)
+	postUpdate(LO_R_dailyMeter, 0)
+	postUpdate(LO_ALL_dailyMeter, 0)
+}

@@ -1,0 +1,31 @@
+/*
+ * Daily heating power consumption calculation as is
+ * The formula is 
+ * E = SUMM(Pi * Ti) / (60 * 60)
+ * where i - one of power modes: HI, LO_R, LO_ALL
+ * Pi - heating power in mode i, kW
+ * Ti - boiler's heating duration in mode i, seconds 
+ * E - total daily power consumption, kWh
+ */
+
+val double r = 2.9
+
+val double all40power = 2.5
+val double r70power = 2.8
+val double r40power = r70power / r
+
+val r40s = (LO_R_dailyMeter.state as org.openhab.core.library.types.DecimalType).doubleValue
+val r70s = (HI_dailyMeter.state as org.openhab.core.library.types.DecimalType).doubleValue
+val all40s = (LO_ALL_dailyMeter.state as org.openhab.core.library.types.DecimalType).doubleValue
+
+//val r40Cons = r40s * r40power + r70s * r70power
+//logDebug("r40.consumption", "{} kWs", r40Cons)
+
+val dailyConsumption = (r40s * r40power + r70s * r70power + all40s * all40power) / 3600.0
+logInfo("daily.power.as_is", "Consumption: {}", dailyConsumption)
+
+postUpdate(PowerConsumptionAsIs, dailyConsumption)
+
+postUpdate(LO_R_dailyMeter, 0)
+postUpdate(HI_dailyMeter, 0)
+postUpdate(LO_ALL_dailyMeter, 0)

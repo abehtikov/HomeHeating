@@ -17,6 +17,9 @@ Items {
 	Pi_Temperature	: strategy = everyChange, everyHour
 	TempSensor* : strategy = everyHour, restoreOnStartup
 	
+	// chart option update every minute
+	gPWM*, gTrend* : strategy = everyMinute
+	
 	// String items cannot be stored to rrd, can they?
 	//CalendarHeatingRequest, UserHeatingRequest, BoilerHeatingMode	: strategy = everyChange
 }

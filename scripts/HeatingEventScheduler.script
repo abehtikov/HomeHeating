@@ -1,0 +1,68 @@
+/*
+ * Schedule heating events based on daily average power demand
+ */
+
+val demand = (HeatPowerDemand_DailyAvg.state as org.openhab.core.library.types.DecimalType).doubleValue
+
+val powerRatio = 2.9
+val r70power = 2.8
+val r40power = r70power / powerRatio
+
+if (demand <= 0.25) {
+	logInfo("heating.offline.scheduler", "demand is too low to switch ON heating: {} kW", demand)
+} else {
+	
+	var all40h = (Duration_ALL_40C.state as org.openhab.core.library.types.DecimalType).doubleValue
+	var r70h = (Duration_R_70C.state as org.openhab.core.library.types.DecimalType).doubleValue
+	var r40h = (Duration_R_40C.state as org.openhab.core.library.types.DecimalType).doubleValue
+	
+	var all40m = Math::round((all40h * 60).doubleValue).intValue
+	var r70m = Math::round( (r70h * 60).doubleValue ).intValue
+	var r40m = Math::round( (r40h * 60).doubleValue ).intValue
+	logDebug("estimated.heating.duration", "all40C: {} min. | r70C: {} min. | r40C: {} min.", all40m, r70m, r40m)
+	
+	val int dayOfWeek = now.getDayOfWeek()
+	var int nextDay = dayOfWeek + 1
+	
+	var int wf1hh
+	var int wf1mm 
+	var int wf2hh 
+	var int wf2mm
+	
+	if (nextDay == 6 || nextDay == 7) {
+		
+	} else {
+		
+		var hh = (wd_ev_hh.state as org.openhab.core.library.types.DecimalType).doubleValue
+		wf1hh = Math::floor(hh).intValue
+		wf1mm = Math::round( ((hh - wf1hh) * 60).doubleValue ).intValue
+		
+		logDebug("offline.event.scheduler", "wf1hh class: " + wf1hh.getClass().getName())
+		if (dayOfWeek == 1 || dayOfWeek ==3 || dayOfWeek ==5) {
+			wf1hh = wf1hh + 1
+		}
+		
+		hh = (wd_mo_hh.state as org.openhab.core.library.types.DecimalType).doubleValue
+		wf2hh = Math::floor(hh).intValue
+		wf2mm = Math::round( ((hh - wf2hh) * 60).doubleValue ).intValue
+	}
+	 
+	// get evening and morning warm floor event timing
+	var wf_mo = new org.joda.time.LocalTime(wf2hh, wf2mm).toDateTimeToday().plusDays(1)
+	var wf_ev = new org.joda.time.LocalTime(wf1hh, wf1mm).toDateTimeToday()
+	
+	var wf_mo_start = wf_mo.minusMinutes(all40m / 2)
+	var wf_ev_start = wf_ev.minusMinutes(all40m / 2)
+	
+	var wfGapInterval = new org.joda.time.Interval(wf_ev, wf_mo_start)
+	//var nightlyGap = new org.joda.time.Duration(wf_ev, wf_mo_start)
+	var today14h = new org.joda.time.LocalTime(14, 0).toDateTimeToday()
+	
+	val mm = wfGapInterval.toDuration().getStandardMinutes()
+	logInfo("warm.floor.events", "evening: {}, morning: {}, gap: {} min.", wf_ev, wf_mo, mm)
+	
+	if (/*demand < 1.0*/ (all40h + r40h) < 20 ) { // all40 + r40 events only
+		logDebug("boiler.r40C.events", "Low temperature events are sufficient to match power demand")
+	}
+}
+

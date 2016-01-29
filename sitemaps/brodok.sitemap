@@ -1,26 +1,34 @@
 sitemap brodok label="Main Menu"
 {
 	Frame label="Heating" {
-		Group item=Heating label="All Heating" icon="firstfloor"
+		Group item=ThermoValve icon="firstfloor"
 		Group item=gBoiler label="Boiler" icon="groundfloor" {
 			Frame label="Boiler heating mode" {
-				Switch item=Heating_Boiler_HI
-				Switch item=Heating_Boiler_LO
-				Text item=BoilerHeatingMode label="Mode [%s]" valuecolor=[Off="lightgray",HI="red",LO_R="orange",LO_ALL="orange"]
+				Text item=Heating_Boiler_HI valuecolor=[OFF="lightgray", ON="green"]
+				Text item=Heating_Boiler_LO valuecolor=[OFF="lightgray", ON="green"]
+				Text item=BoilerHeatingMode label="Mode [%s]" valuecolor=[Off="lightgray",HI="red", HI_B="red", LO_R="orange",LO_50R="orange",LO_50B="orange",LO_ALL="orange"]
+			}
+			Frame label="Boiler trends" {
+				Chart item=gTrend service="rrd4j" period=h refresh=60
 			}
 			Frame label="Boiler parameters" {
 				Text item=ActiveBoilerHeatingElements
+				Text item=BoilerEventPower
 			}
 			Frame label="График отопления" {
 				Webview item=GHeatingCalendar height=10 url="https://www.google.com/calendar/embed?showTitle=0&amp;showNav=0&amp;showPrint=0&amp;mode=AGENDA&amp;height=300&amp;wkst=2&amp;bgcolor=%23FFFFFF&amp;src=ovgvjgns0to17dfbaikikbsuf4%40group.calendar.google.com&amp;color=%230F4B38&amp;ctz=Europe%2FMinsk"
 			}
 		}
-		//Group item=gPresense label="Presense" icon="garden" 
+		Group item=gHEvent label="Heating event data"
+		/*
+		Group item=gPresense label="Presense" icon="garden" {
+			Webview url="http://localhost:8080/static/map3.html" height=12
+		}*/
 		Group item=gHeatingEQ label="Heat Power Demand" icon="pie" {
 			Frame label="Model parameters" {
-				Setpoint item=HeatLoadFactor minValue=90 maxValue=125 step=5.0
+				Setpoint item=HeatLoadFactor minValue=60 maxValue=125 step=5.0
 				Setpoint item=HeatCompensation minValue=300 maxValue=800 step=100
-				Setpoint item=ActiveBoilerHeatingElements minValue=1 maxValue=6 step=1
+				//Setpoint item=ActiveBoilerHeatingElements minValue=1 maxValue=6 step=1
 				//Setpoint item=LO_HI_Ratio minValue=50 maxValue=75 step=5	
 			}
 			Frame label="Other" {
@@ -30,12 +38,23 @@ sitemap brodok label="Main Menu"
 				Text item=PowerDemandLastUpdate
 				//Text item=GoogleScriptURL
 			}
-			Frame label="Estimated daily heating cycles" {
-				Text item=Duration_ALL_40C
-				Text item=Duration_R_70C
-				Text item=Duration_R_40C
-			}
 		}
+		
+		Group item=gPWM label="PWM settings" /*  icon="pie" {
+			Frame label="Parameters" {
+				Setpoint item=LivingRoom_PWM_SP minValue=0 maxValue=100 step=5
+				Text item=LivingRoom_PWM_PV
+				Text item=LivingRoom_PWM_enabled
+				Switch item=Heating_Valve_LivingRoom
+			}
+			
+			Frame label="PWM valve control chart" {
+				Chart item=LivingRoom_PWM_PV service="rrd4j" period=h refresh=20 height=90
+				Chart item=LivingRoom_PWM_enabled service="rrd4j" period=h refresh=20 height=90
+				Chart item=Heating_Valve_LivingRoom service="rrd4j" period=h refresh=20 height=90
+			}
+		}*/
+		//Group item=gDailyMeters
 	}
 	
 	/*
@@ -56,7 +75,7 @@ sitemap brodok label="Main Menu"
 			Frame label="Boiler manual control" {
 				Switch item=CalendarRequestPriority
 				Setpoint item=UserRequestMaxDuration minValue=2 maxValue=14 step=1
-				Selection item=UserHeatingRequest label="Change heating mode" mappings=[Off="Выключить", HI="Радиаторы 70C", LO_R="Радиаторы 40С", LO_ALL="Теплый пол и радиаторы", AUTO="По графику"] //visibility=[BoilerHeatingMode=="Off", CalendarRequestPriority==OFF, BoilerHeatingMode=="Uninitialized"]
+				Selection item=UserHeatingRequest label="Change heating mode" mappings=[Off="Выключить", HI="Радиаторы 70C", HI_B="Спальня 70C", LO_50R="Радиаторы 50С", LO_50B="Спальня 50С", LO_ALL="Теплый пол и спальня", AUTO="По графику"] //visibility=[BoilerHeatingMode=="Off", CalendarRequestPriority==OFF, BoilerHeatingMode=="Uninitialized"]
 			}
 			Frame label="Warm floor comfort hours setup" {
 				Setpoint item=wd_mo_hh minValue=2 maxValue=12 step=0.5
@@ -65,9 +84,15 @@ sitemap brodok label="Main Menu"
 				Setpoint item=we_ev_hh minValue=14 maxValue=24 step=0.5
 			}
 		}
+		Group item=gNetworkHealth {
+			Text item=nhMqtt
+			Text item=nhCalendar
+			Text item=nhForecastIo
+		} // ping network resources to monitor health
+
 		Text item=BoilerCtrlMode // Calendar/manual
 		Text item=UserRequestExpires visibility=[BoilerCtrlMode==Manual] // time when manual mode is over
-		Text item=BoilerHeatingMode valuecolor=[Off="lightgray",HI="red",LO_R="orange",LO_ALL="orange"] // HI / LO etc.
+		Text item=BoilerHeatingMode valuecolor=[Off="lightgray",HI="red", HI_B="red", LO_R="orange",LO_50R="orange",LO_50B="orange",LO_ALL="orange"] // HI / LO etc.
 	}
 	
 	Frame label="Температура помещения" {
@@ -80,13 +105,7 @@ sitemap brodok label="Main Menu"
 	}
 	
 	Frame label="Погода в Бродке" {
-		Text item=Pi_Temperature valuecolor=[Weather_LastUpdate=="Uninitialized"="lightgray",Weather_LastUpdate>90="lightgray",>25="orange",>15="green",>5="orange",<=5="blue"] {
-			Frame {
-				Text item=Weather_Temp_Max valuecolor=[>25="orange",>15="green",>5="orange",<=5="blue"]
-				Text item=Weather_Temp_Min valuecolor=[>25="orange",>15="green",>5="orange",<=5="blue"]
-				Text item=Weather_LastUpdate visibility=[Weather_LastUpdate>30] valuecolor=[Weather_LastUpdate>120="orange", Weather_LastUpdate>300="red"]
-			}
-		}
+		Text item=Pi_Temperature valuecolor=["Uninitialized"="lightgray"] 
 		Text item=Temperature {
 			Frame label="This month average" {
 				Text item=MonthAverageTemp
@@ -95,9 +114,14 @@ sitemap brodok label="Main Menu"
 				Text item=ma24hRrdTemp
 				Text item=ma48hRrdTemp
 			}
-			//Frame label="Ambient temperature chart"{
-				//Chart item=Temperature service="rrd4j" period=D refresh=60
-			//}
+			Frame label="" {
+				Text item=Weather_Temp_Max valuecolor=[>25="orange",>15="green",>5="orange",<=5="blue"]
+				Text item=Weather_Temp_Min valuecolor=[>25="orange",>15="green",>5="orange",<=5="blue"]
+				Text item=Weather_LastUpdate
+			}
+			Frame label="Ambient temperature chart" {
+				Chart item=Temperature service="rrd4j" period=D refresh=60
+			}
 		}
 		Text item=Humidity
 		Text item=AtmPressure_mmHg

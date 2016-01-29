@@ -1,0 +1,35 @@
+//import static org.openhab.core.transform.actions.*
+/*
+ * parse new calendar event metadata arrived on mqtt topic  'brodok/heating/event'
+ */
+
+var String json = (HeatingEventRawData.state as org.openhab.core.library.types.StringType).toString
+//  "brodok/heating/event":"{ type: 'HI', duration:'81', power:'1.83', pwm:'35' }"
+//   duration[minutes], power [kW], pwm [0% - 100%]
+var String type = transform("JSONPATH", "$.type", json)
+
+if (type == "Off") {
+	sendCommand(HeatingEventPeriod_m, 0)
+	sendCommand(BoilerEventPower, 0)
+} else if (type == "CAL") {
+	// TODO
+} else {
+	
+	var String duration = transform("JSONPATH", "$.duration", json)
+	var String power  	= transform("JSONPATH", "$.power", json)
+	var String pwm 		= transform("JSONPATH", "$.pwm", json)
+	
+	// TODO: validate values
+	logInfo("event.data", "New event: {}, {} min. {} kW, pwm: {}%", type, duration, power, pwm)
+	sendCommand(HeatingEventPeriod_m, duration)
+	sendCommand(BoilerEventPower, power)
+	
+	if (type == "LO_ALL") {
+		sendCommand(Kitchen_PWM_SP, pwm)
+	} else {
+		sendCommand(LivingRoom_PWM_SP, pwm)
+	}
+}
+	
+//	sendCommand(CalendarHeatingRequest, type)
+

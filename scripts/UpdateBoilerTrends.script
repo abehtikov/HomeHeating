@@ -1,0 +1,50 @@
+/*
+ * Update boiler trends (temperature & valves)
+ */
+
+var boilerStatus = "OFF"// LO | HI | OFF
+var temp = 30 // default
+
+if (Heating_Boiler_HI.state == ON) {
+	boilerStatus = "HI"
+	temp = 70
+	if (Heating_Valve_LivingRoom.state == OFF)
+		temp = 80
+		
+} else if (Heating_Boiler_LO.state == ON) {
+	temp = 50
+	boilerStatus = "LO"
+	if (WarmFloorValve.state == ON) {
+		temp = 40
+	}
+}
+
+
+if (trBoilerTemp.state == Uninitialized || trBoilerTemp.state == Undefined) {
+	postUpdate(trBoilerTemp, temp)
+} else {
+	val currTemp = (trBoilerTemp.state as org.openhab.core.library.types.DecimalType).doubleValue
+	if (currTemp != temp)
+		postUpdate(trBoilerTemp, temp)
+}
+
+/*
+// update trend living room valve
+if (Heating_Valve_LivingRoom.state == ON)
+	postUpdate(trValveLiv, 5)
+else
+	postUpdate(trValveLiv, 0)
+
+// update trend kitchen valve
+if (Heating_Valve_Kitchen.state == ON)
+	postUpdate(trValveKit, 15)
+else
+	postUpdate(trValveKit, 10)
+	
+// update trend kitchen valve proxy
+if (Kitchen_Valve_Proxy.state == ON)
+	postUpdate(trValveKProxy, 25)
+else
+	postUpdate(trValveKProxy, 20)
+*/
+

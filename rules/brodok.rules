@@ -4,6 +4,7 @@ import org.openhab.model.script.actions.*
 import java.util.Date
 import org.joda.time.*
 import java.lang.Math
+import org.joda.time.Minutes
 
 var Number processUpdate = 0
 //var String Boiler_PrevState
@@ -11,8 +12,16 @@ var String os_type = "linux" //"win"
 var Timer timer = null
 var Timer heatingBackToAuto = null
 var Timer warmFloorTimer = null
+var Timer kitchenTimer = null // kitchen underfloor heating loop timer
+var Timer boilerFlowTimer
 
 val DateTimeType expired = new DateTimeType()
+
+// daily meters for 3 different boiler modes
+// meters are reset daily at 14:00 afternoon
+var DateTimeType dm_lo40
+var DateTimeType dm_hi70
+var DateTimeType dm_loAll40
 
 var Number t_fio24h = 0
 var Number t_fio48h = 0
@@ -20,6 +29,22 @@ var Number t_owm24h = 0
 // counters
 var int c1 = 0
 var int c2 = 0
+
+/*
+var int t_liv_on = 0
+var int t_liv_off = 0
+var Number t_cycle = 100
+*/
+var int pwm_counter = 0
+
+rule "Schedule events offline"
+when
+	Item Duration_R_40C received update or
+	Item wd_mo_hh changed
+then
+	callScript("HeatingEventScheduler")
+end
+
 
 rule "Calculate current heating power demand"
 when
@@ -50,6 +75,7 @@ then
 		//HeatPowerDemand_Current.postUpdate(demand/1000)
 		postUpdate(HeatPowerDemand_DailyAvg, demand/1000)
 		PowerDemandLastUpdate.postUpdate(new DateTimeType())
+		callScript("demo")
 	}
 end
 
@@ -62,16 +88,25 @@ then
 	postUpdate(TempSensor_Kitchen, 21.0)
 	postUpdate(TempSensor_Bedroom, 19.0)
 	
+	logDebug("brodok.rules", "Set default valve position (open) of the living room loop.")
+	// open living room valve (Normally Open)
+	postUpdate(LivingRoom_PWM_PV, ON)
+	sendCommand(LivingRoom_PWM_enabled, OFF)
+	postUpdate(Heating_Valve_LivingRoom, ON)
+	postUpdate(LivingRoom_PWM_SP, 50)
+	postUpdate(Kitchen_PWM_SP, 80)
+	postUpdate(Heating_Valve_Kitchen, OFF) // normally closed
+	postUpdate(Radiators_PWM_Cycle, 50) // 120 (2h) by default
+	
+	postUpdate(BoilerEventPower, 0)
+	postUpdate(HeatingEventPeriod_m, 0)
+	
 	AfterStartup.sendCommand(OFF)
 	timer = createTimer(now.plusSeconds(20)) [|
 		postUpdate(AfterStartup, ON)
 	]
-	//TempSensor.postUpdate(20.0)
+
 	CalendarRequestPriority.postUpdate(ON)
-	//BoilerCtrlMode.postUpdate("Calendar")
-	
-	//var os = java::lang::System::getProperty("os.name")
-	//logDebug("homeHeating.os", os)
 	
 	logDebug("brodok.rules", "Init completed")
 	processUpdate = 1
@@ -90,6 +125,10 @@ then
 	}
 	callScript("initialize")
 	
+	if (HeatingEventRawData.state != Uninitialized && HeatingEventRawData.state != Undefined) {
+		logInfo("mqtt.event", "Parsing persisted mqtt event data.")
+		callScript("ParseHeatingEvent")
+	}
 	// after system reboot boiler control mode is restored back to calendar
 	postUpdate(UserHeatingRequest, "AUTO")
 	var String message = "Boiler control mode set to Calendar after system reboot"
@@ -211,6 +250,7 @@ then
 		// update GUI
 		postUpdate(BoilerCtrlMode, "Calendar")
 		postUpdate(UserRequestExpires, expired)
+		
 	} else {
 		postUpdate(BoilerCtrlMode, "Manual");
 		
@@ -255,12 +295,15 @@ when
 then
 	var cmd = receivedCommand
 	// validate calendar heating request command
-	if (cmd == "Off" || cmd == "LO_R" || cmd == "HI" || cmd == "LO_ALL") {
+	if (cmd == "Off" || cmd == "LO_R" || cmd == "HI" || cmd == "LO_ALL" 
+		|| cmd == "HI_B" || cmd == "LO_50R" || cmd == "LO_50B"
+	) {
 		if (BoilerCtrlMode.state == "Calendar") {
-			// validate command
+			
 			sendCommand(BoilerHeatingMode, receivedCommand)
 		
 		} else if (CalendarRequestPriority.state == ON && BoilerHeatingMode.state == "Off") {
+			// boiler had been switched Off manually and then calendar event has occured
 			logDebug("heating.calendar.takeover", "Received {} when calendar priority is ON and boiler is Off", cmd)
 			// switch Manual to Calendar/AUTO
 			sendCommand(UserHeatingRequest, "AUTO")
@@ -283,7 +326,7 @@ then
 	if (previousState == "CAL") {
 		sendCommand(CalendarHeatingRequest, "Off")
 	} else {
-		sendCommand(CalendarHeatingRequest, previousState)
+		sendCommand(CalendarHeatingRequest, previousState.toString)
 	}
 	// send email
 	// sendMail(to, "Brodok heating is back to calendar control", 
@@ -297,39 +340,114 @@ then
 	val newState = BoilerHeatingMode.state
 	logInfo("boiler.heating.mode", "Switch from {} to {}", previousState, newState)
 	
+	/*
+	if (previousState == "HI") {
+		val value = (HI_dailyMeter.state as DecimalType).intValue
+		var duration = new org.joda.time.Duration(dm_hi70, now)
+		var result = value + duration.getStandardSeconds()
+		postUpdate(HI_dailyMeter, result)
+		
+	} else if (previousState == "LO_R") {
+		val value = (LO_R_dailyMeter.state as DecimalType).intValue
+		var duration = new org.joda.time.Duration(dm_lo40, now)
+		var result = value + duration.getStandardSeconds()
+		postUpdate(LO_R_dailyMeter, result)
+		
+	} else if (previousState == "LO_ALL") {
+		val value = (LO_ALL_dailyMeter.state as DecimalType).intValue
+		var duration = new org.joda.time.Duration(dm_loAll40, now)
+		var result = value + duration.getStandardSeconds()
+		postUpdate(LO_ALL_dailyMeter, result)
+	
+	} else if (previousState == "Off") {
+		if (newState != "LO_ALL") {
+			// make sure boiler minimum flow is >= 4 ltr/min. otherwise boiler won't start heating
+			sendCommand(LivingRoom_PWM_enabled, OFF)
+			sendCommand(Heating_Valve_LivingRoom, ON)
+			
+			boilerFlowTimer = null
+			boilerFlowTimer = createTimer(now.plusMinutes(5), [|
+				sendCommand(LivingRoom_PWM_enabled, ON)
+			])
+		}
+	}*/
+	
 	if (newState == "HI") {
 		sendCommand(Heating_Boiler_HI, ON)
 		sendCommand(Heating_Boiler_LO, OFF)
 		postUpdate(WarmFloorValveHelper, OFF)
-	
-	} else if (newState == "LO_R") {
+		
+		sendCommand(LivingRoom_PWM_enabled, ON)
+		
+//		dm_hi70 = now
+		
+	} else if (newState == "HI_B") {
+		sendCommand(Heating_Boiler_HI, ON)
+		sendCommand(Heating_Boiler_LO, OFF)
+		postUpdate(WarmFloorValveHelper, OFF)
+		
+		sendCommand(LivingRoom_PWM_enabled, OFF)
+		sendCommand(Heating_Valve_LivingRoom, OFF)
+		
+	//	dm_hi70 = now
+		
+	} else if (newState == "LO_R" || newState == "LO_50R") {
 		sendCommand(Heating_Boiler_HI, OFF)
 		sendCommand(Heating_Boiler_LO, ON)
 		postUpdate(WarmFloorValveHelper, OFF)
 		
+		sendCommand(LivingRoom_PWM_enabled, ON)
+		
+		//dm_lo40 = now
+		
+	} else if (newState == "LO_50B") {
+		sendCommand(Heating_Boiler_HI, OFF)
+		sendCommand(Heating_Boiler_LO, ON)
+		postUpdate(WarmFloorValveHelper, OFF)
+		
+		sendCommand(LivingRoom_PWM_enabled, OFF)
+		sendCommand(Heating_Valve_LivingRoom, OFF)
+		
+		//dm_lo40 = now
+		
 	} else if (newState == "LO_ALL") {
 		sendCommand(Heating_Boiler_HI, OFF)
 		sendCommand(Heating_Boiler_LO, ON)
+
+		sendCommand(LivingRoom_PWM_enabled, OFF)
 		
-		if (previousState == "HI") {
+		if (previousState == "HI" || previousState == "HI_B") {
+			// open living room valve for additional heat transfer
+			sendCommand(Heating_Valve_LivingRoom, ON)
 			// delay opening warm floor valves until water cools down
 			warmFloorTimer = null
-			warmFloorTimer = createTimer(now.plusMinutes(5), [|
+			warmFloorTimer = createTimer(now.plusMinutes(10), [|
 				WarmFloorValve.sendCommand(ON)
+				logInfo("boiler.cooldown", "HI --> LO_ALL  transition cool down is over.")
+				sendCommand(Heating_Valve_LivingRoom, OFF)
 			])
-			logDebug("boiler.heating.mode", "HI->LO_ALL 5 min. delay before opening warm floor valves")
+			logDebug("boiler.heating.mode", "HI->LO_ALL 10 min. delay before opening warm floor valves")
 		} else {
 			WarmFloorValve.sendCommand(ON)
+			sendCommand(Heating_Valve_LivingRoom, OFF)
 		}
+		
+		//dm_loAll40 = now
+		
 	} else if (newState == "Off") {
 		sendCommand(Heating_Boiler_HI, OFF)
 		sendCommand(Heating_Boiler_LO, OFF)
 		postUpdate(WarmFloorValveHelper, OFF)
 		
+		// open living room valve (Normally Open)
+		sendCommand(LivingRoom_PWM_enabled, OFF)
+		postUpdate(Heating_Valve_LivingRoom, ON)
+		
 	} else {
 		logInfo("boiler.heating.mode", "Ignore command: " + newState)
 	}
 end
+
 
 rule "Close warm floor valves correctly"
 when
@@ -343,6 +461,57 @@ then
 	// switch warm floor valves group OFF
 	WarmFloorValve.sendCommand(OFF)
 	postUpdate(WarmFloorValveHelper, ON)
+end
+
+/*
+ * Kitchen valve is using proxy switch to establish 'startup delay' control strategy
+ * 
+ * Group			|	Item proxy (virtual switch)	|	Item (GPIO actuator)
+ * --------------------------------------------------------------------------
+ * WarmFloorValve	|	Kitchen_Valve_Proxy			|	Heating_Valve_Kitchen
+ * 
+ */
+rule "Kitchen valve proxy"
+when 
+	Item Kitchen_Valve_Proxy received command
+then
+	if (receivedCommand == OFF) {
+		// disable kitchen timer if any
+		if (kitchenTimer != null) {
+			kitchenTimer.cancel()
+			kitchenTimer = null
+		}
+		sendCommand(Heating_Valve_Kitchen, OFF)
+		
+	} else if (receivedCommand == ON) {
+		
+		var pwm = (Kitchen_PWM_SP.state as DecimalType).intValue
+		if (pwm == 100) {
+			logInfo("kitchen.proxy", "Kitchen warm floor SP=100%. Opening valve immediately")
+			sendCommand(Heating_Valve_Kitchen, ON)
+			
+		} else if (pwm > 0) {
+			
+			var int delay = 5 // default
+			var state = HeatingEventPeriod_m.state
+			if (state == Undefined || state == Uninitialized) {
+				delay = 5 // min.
+			} else {
+				var int duration = (state as DecimalType).intValue
+				delay = ((100 - pwm) * duration / 100.0).intValue
+			}
+			
+			logInfo("kitchen.delayed", 
+				"Trigger Kitchen's warm floor UP with delay = {} min. PWM SP: {}%", delay, pwm)
+			if (kitchenTimer != null) {
+				kitchenTimer.cancel()
+				kitchenTimer = null
+			}
+			kitchenTimer = createTimer(now.plusMinutes(delay), [|
+				sendCommand(Heating_Valve_Kitchen, ON)
+			])
+		}
+	}
 end
 
 
@@ -359,53 +528,151 @@ then
 	postUpdate(ma48hRrdTemp, ma) 
 end
 
+/*
+ * Min and Max outside temperatures
+ */
+rule "Update max and min temperatures"
+when
+	Item Temperature changed or
+	Time cron "0 0 0 * * ?" or
+	System started
+then	
+	postUpdate(Weather_Temp_Max, Temperature.maximumSince(now.toDateMidnight).state)
+	postUpdate(Weather_Temp_Min, Temperature.minimumSince(now.toDateMidnight).state)
+	postUpdate(Weather_LastUpdate, new DateTimeType())
+end
+
 
 /*
-rule "Update daily average temperatures"
+ * Update thingspeak channel
+ */
+rule "Update ThingSpeak Brodok_heating channel"
 when
-	Time cron noon
+	Item Pi_Temperature received update
 then
-	if (c1 > 0) {
-		val avg24h = t_fio24h / c1
-		logInfo("temp.daily.average", 
-			"For the last 24 hours: {} / {} = {}",
-			t_fio24h, c1, avg24h)
-		postUpdate(ma24hTemp, avg24h)
-	}
-	c1 = 0
-	t_fio24h = 0
+	val value = (Pi_Temperature.state as DecimalType).doubleValue
+	val api_key = "Z2YLVVS4CRNV2AVX"
+	var url = String::format("https://api.thingspeak.com/update?api_key=%2$s&field1=%1$.2f",
+		value, api_key
+	)
+	logDebug("brodok.rules", "Update thingspeak url: " + url)
+	sendHttpGetRequest(url)
+end
+
+/*
+ * PWM related rules
+ * 
+ */
+rule "PWM tick"
+when
+	Time cron "0 * * * * ?" // every 1 minutes
+	//Time cron "30 * * * * ?" // for quick test
+then
+	var pwm_sp = (LivingRoom_PWM_SP.state as DecimalType).intValue
+
+	var cycle_len = (Radiators_PWM_Cycle.state as DecimalType).intValue
+
+	var pv = 100 * pwm_counter / cycle_len
+	val currentState = LivingRoom_PWM_PV.state
 	
-	if (c2 > 24) {
-		// update 48h average
-		val avg48h = t_fio48h / c2
-		logInfo("temp.daily.average", 
-			"For the last 24 hours: {} / {} = {}",
-			t_fio48h, c2, avg48h)
-		postUpdate(ma48hTemp, avg48h)
-		
-		c2 = 0
-		t_fio48h = 0
+	if (LivingRoom_PWM_enabled.state == ON)
+		logDebug("pwm", "PWM tick. Living room PV: {}, SP: {}, current state: {}", 
+			pv, pwm_sp, currentState
+		)
+	
+	if (pv >= pwm_sp) {
+		if (currentState == ON)
+			sendCommand(LivingRoom_PWM_PV, OFF)
+	} else {
+		if (currentState == OFF)
+			sendCommand(LivingRoom_PWM_PV, ON)
+	}
+	
+	pwm_counter = pwm_counter + 1
+	if (pwm_counter == cycle_len)
+		pwm_counter = 0	
+end
+
+
+rule "PWM Update living room valve"
+when
+	Item LivingRoom_PWM_PV changed
+	//Item LivingRoom_PWM_enabled changed from OFF to ON
+then
+	if (LivingRoom_PWM_enabled.state == ON) {
+		// update valve only when PWM control is allowed
+		val newState = LivingRoom_PWM_PV.state.toString
+		logDebug("brodok.rules.pwm", "PWM: Living room valve change from {} to {}",
+			Heating_Valve_LivingRoom.state, newState
+		)
+		sendCommand(Heating_Valve_LivingRoom, newState)
 	}
 end
 
-rule "Accumulate temperatures"
+rule "PWM control enabled"
 when
-	Time cron "0 5 * * * ?" // every hour
-	//Item Temperature received update
+	Item LivingRoom_PWM_enabled changed from OFF to ON
 then
-	var value = Temperature.state
-	postUpdate(AmbientTempRrd, value)
-	
-	c1 = c1 + 1
-	c2 = c2 + 1
-	t_fio24h = t_fio24h + (value as DecimalType).doubleValue
-	t_fio48h = t_fio48h + (value as DecimalType).doubleValue
-	
-	var String text = String::format("(step: %d, avg:%.2f)", c1, t_fio24h/c1)
-	postUpdate(tempAccum24h, text)
-	postUpdate(tempAccum48h, String::format("(step: %d, avg:%.2f)", c2, t_fio48h/c2))
-	logInfo("daily.average", "accumulate value: {}", value)
+	val pv = LivingRoom_PWM_PV.state.toString
+	logDebug("brodok.rules", "ENABLE Living room valve PWM control. PV = {}", pv)
+	sendCommand(Heating_Valve_LivingRoom, pv)
 end
 
-*/
+/*
+ * Calendar event entry point.
+ */
+rule "Event metadata changed"
+when 
+    Item HeatingEventRawData received update
+then
+	/*
+	var String json = (HeatingEventRawData.state as StringType).toString
+	var String type = transform("JSONPATH", "$.type", json)
+	logInfo("calendar.event", "Event received: {}", type)
+	sendCommand(CalendarHeatingRequest, type)
+	* 
+	*/
+	callScript("ParseHeatingEvent")
+end
 
+
+rule "Debug boiler trends"
+when
+	//Time cron  "0 * * * * ?" // every 1 minutes
+	Time cron "30 * * * * ?"
+then
+	callScript("UpdateBoilerTrends")
+end
+
+//1
+rule "Valve Living room trend"
+when
+	Item Heating_Valve_LivingRoom changed
+then
+	if (Heating_Valve_LivingRoom.state == ON)
+		postUpdate(trValveLiv, 5)
+	else
+		postUpdate(trValveLiv, 0)
+end
+
+//2
+rule "Valve Kitchen trend"
+when
+	Item Heating_Valve_Kitchen changed
+then
+	if (Heating_Valve_Kitchen.state == ON)
+		postUpdate(trValveKit, 15)
+	else
+		postUpdate(trValveKit, 10)
+end
+
+//3
+rule "Valve Kitchen proxy trend"
+when
+	Item Kitchen_Valve_Proxy changed
+then
+	if (Kitchen_Valve_Proxy.state == ON)
+		postUpdate(trValveKProxy, 25)
+	else
+		postUpdate(trValveKProxy, 20)
+end
