@@ -102,7 +102,7 @@ then
 	postUpdate(HeatingEventPeriod_m, 0)
 	
 	AfterStartup.sendCommand(OFF)
-	timer = createTimer(now.plusSeconds(20)) [|
+	timer = createTimer(now.plusSeconds(30)) [|
 		postUpdate(AfterStartup, ON)
 	]
 
@@ -441,7 +441,7 @@ then
 		
 		// open living room valve (Normally Open)
 		sendCommand(LivingRoom_PWM_enabled, OFF)
-		postUpdate(Heating_Valve_LivingRoom, ON)
+		sendCommand(Heating_Valve_LivingRoom, ON)
 		
 	} else {
 		logInfo("boiler.heating.mode", "Ignore command: " + newState)
@@ -602,7 +602,7 @@ then
 	if (LivingRoom_PWM_enabled.state == ON) {
 		// update valve only when PWM control is allowed
 		val newState = LivingRoom_PWM_PV.state.toString
-		logDebug("brodok.rules.pwm", "PWM: Living room valve change from {} to {}",
+		logInfo("brodok.rules.pwm", "Living room valve change from {} to {}",
 			Heating_Valve_LivingRoom.state, newState
 		)
 		sendCommand(Heating_Valve_LivingRoom, newState)
@@ -614,7 +614,7 @@ when
 	Item LivingRoom_PWM_enabled changed from OFF to ON
 then
 	val pv = LivingRoom_PWM_PV.state.toString
-	logDebug("brodok.rules", "ENABLE Living room valve PWM control. PV = {}", pv)
+	logInfo("brodok.rules", "ENABLE Living room valve PWM control. PV = {}", pv)
 	sendCommand(Heating_Valve_LivingRoom, pv)
 end
 

@@ -9,7 +9,7 @@ sitemap brodok label="Main Menu"
 				Text item=BoilerHeatingMode label="Mode [%s]" valuecolor=[Off="lightgray",HI="red", HI_B="red", LO_R="orange",LO_50R="orange",LO_50B="orange",LO_ALL="orange"]
 			}
 			Frame label="Boiler trends" {
-				Chart item=gTrend service="rrd4j" period=h refresh=60
+				Chart item=gTrend service="rrd4j" period=12h refresh=60
 			}
 			Frame label="Boiler parameters" {
 				Text item=ActiveBoilerHeatingElements
