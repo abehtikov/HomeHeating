@@ -77,6 +77,8 @@ Number LivingRoom_PWM_SP		"Living room PWM duty cycle (setpoint) [%d %%]" (Heati
 Switch LivingRoom_PWM_enabled	"Living room PWM enabled [%s]"			(Heating, gPWM) // enable only when LO_50R or HI event(s) is up
 Number Radiators_PWM_Cycle		"Radiators PWM cycle [%d min]"			(Heating, gPWM) // 20min -- 240 min (4h)
 
+Number Valve_Toggle_Deadband	"Valve toggle deadband [%d min]"		(Heating, gPWM)
+
 // Warm floor valves are normally closed. Switch position=ON -> opens the valve (3 min. delay) and it's heating loop
 Switch Heating_Valve_Kitchen 	"Kitchen" 		<heating>	(Heating, /*WarmFloorValve, */ThermoValve, RelaysGPIO)	{gpio="pin:27 activelow:yes"} // Relay #2
 Switch Kitchen_Valve_Proxy		"Kitchen valve proxy" <heating> (Heating, WarmFloorValve) // accepts requests

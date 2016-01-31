@@ -36,6 +36,8 @@ var int t_liv_off = 0
 var Number t_cycle = 100
 */
 var int pwm_counter = 0
+var boolean ON_deadband = false
+var boolean OFF_deadband = false
 
 rule "Schedule events offline"
 when
@@ -97,6 +99,7 @@ then
 	postUpdate(Kitchen_PWM_SP, 80)
 	postUpdate(Heating_Valve_Kitchen, OFF) // normally closed
 	postUpdate(Radiators_PWM_Cycle, 120) // 120 (2h) by default
+	postUpdate(Valve_Toggle_Deadband, 7) // minutes
 	
 	postUpdate(BoilerEventPower, 0)
 	postUpdate(HeatingEventPeriod_m, 0)
@@ -587,7 +590,27 @@ then
 		if (currentState == OFF)
 			sendCommand(LivingRoom_PWM_PV, ON)
 	}
+
+		
+	// check dead band location for valve
+	var deadband = (Valve_Toggle_Deadband.state as DecimalType).intValue
 	
+	if (pwm_counter > cycle_len - deadband) { // prevent short ON-OFF-ON switch
+		ON_deadband = true
+	} else {
+		ON_deadband = false
+	}
+	
+	val pwm_off_mm = pwm_sp * cycle_len / 100
+	// check if we are approaching pwm PV ON -> OFF change
+	if ((pwm_off_mm - deadband) < pwm_counter && pwm_counter <= pwm_off_mm) {
+		OFF_deadband = true
+	} else {
+		OFF_deadband = false
+	}
+	
+	logDebug("pwm", "PWM ON_deadband : {},  OFF_deadband : {}", ON_deadband, OFF_deadband)
+			
 	pwm_counter = pwm_counter + 1
 	if (pwm_counter == cycle_len)
 		pwm_counter = 0	
@@ -614,8 +637,22 @@ when
 	Item LivingRoom_PWM_enabled changed from OFF to ON
 then
 	val pv = LivingRoom_PWM_PV.state.toString
-	logInfo("brodok.rules", "ENABLE Living room valve PWM control. PV = {}", pv)
-	sendCommand(Heating_Valve_LivingRoom, pv)
+	var valveState = Heating_Valve_LivingRoom.state
+	// prevent short on -> off -> on transitions when diff < 6 min
+	// diff = Radiators_PWM_Cycle - pwm_counter [min]
+
+	//var pwm_sp = (LivingRoom_PWM_SP.state as DecimalType).intValue
+	
+	if (ON_deadband && /*pwm_sp != 0 &&*/ valveState == ON) {
+		logInfo("brodok.rules", 
+			"Keep Heating_Valve_LivingRoom [ OPEN ] despite PWM control PV is {}.", pv)
+	} else if (OFF_deadband && /*pwm_sp != 100 &&*/ valveState == OFF) {
+		logInfo("brodok.rules", 
+			"Keep Heating_Valve_LivingRoom [ CLOSED ] despite PWM control PV is {}.", pv)
+	} else {
+		logInfo("brodok.rules", "ENABLE Living room valve PWM control. PV = {}", pv)
+		sendCommand(Heating_Valve_LivingRoom, pv)	
+	}
 end
 
 /*
