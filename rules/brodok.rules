@@ -10,34 +10,17 @@ var Number processUpdate = 0
 //var String Boiler_PrevState
 var String os_type = "linux" //"win"
 var Timer timer = null
-var Timer heatingBackToAuto = null
-var Timer warmFloorTimer = null
+var Timer heatingBackToAuto = null // back to calendar control when user command expires
+var Timer warmFloorTimer = null // delayed start following  HI -> LO_ALL transition
 var Timer kitchenTimer = null // kitchen underfloor heating loop timer
-var Timer boilerFlowTimer
+var Timer coolDownTimer = null // boiler cool down timer to reduce temperature before LO_ALL event
 
 val DateTimeType expired = new DateTimeType()
 
-// daily meters for 3 different boiler modes
-// meters are reset daily at 14:00 afternoon
-var DateTimeType dm_lo40
-var DateTimeType dm_hi70
-var DateTimeType dm_loAll40
-
-var Number t_fio24h = 0
-var Number t_fio48h = 0
-var Number t_owm24h = 0
-// counters
-var int c1 = 0
-var int c2 = 0
-
-/*
-var int t_liv_on = 0
-var int t_liv_off = 0
-var Number t_cycle = 100
-*/
 var int pwm_counter = 0
 var boolean ON_deadband = false
 var boolean OFF_deadband = false
+var boolean event_deadband = false // signals deadband X min before calendar event expires
 
 rule "Schedule events offline"
 when
@@ -343,46 +326,16 @@ then
 	val newState = BoilerHeatingMode.state
 	logInfo("boiler.heating.mode", "Switch from {} to {}", previousState, newState)
 	
-	/*
-	if (previousState == "HI") {
-		val value = (HI_dailyMeter.state as DecimalType).intValue
-		var duration = new org.joda.time.Duration(dm_hi70, now)
-		var result = value + duration.getStandardSeconds()
-		postUpdate(HI_dailyMeter, result)
-		
-	} else if (previousState == "LO_R") {
-		val value = (LO_R_dailyMeter.state as DecimalType).intValue
-		var duration = new org.joda.time.Duration(dm_lo40, now)
-		var result = value + duration.getStandardSeconds()
-		postUpdate(LO_R_dailyMeter, result)
-		
-	} else if (previousState == "LO_ALL") {
-		val value = (LO_ALL_dailyMeter.state as DecimalType).intValue
-		var duration = new org.joda.time.Duration(dm_loAll40, now)
-		var result = value + duration.getStandardSeconds()
-		postUpdate(LO_ALL_dailyMeter, result)
-	
-	} else if (previousState == "Off") {
-		if (newState != "LO_ALL") {
-			// make sure boiler minimum flow is >= 4 ltr/min. otherwise boiler won't start heating
-			sendCommand(LivingRoom_PWM_enabled, OFF)
-			sendCommand(Heating_Valve_LivingRoom, ON)
-			
-			boilerFlowTimer = null
-			boilerFlowTimer = createTimer(now.plusMinutes(5), [|
-				sendCommand(LivingRoom_PWM_enabled, ON)
-			])
-		}
-	}*/
-	
+	if (coolDownTimer != null) {
+		coolDownTimer.cancel()
+		coolDownTimer = null
+	}
 	if (newState == "HI") {
 		sendCommand(Heating_Boiler_HI, ON)
 		sendCommand(Heating_Boiler_LO, OFF)
 		postUpdate(WarmFloorValveHelper, OFF)
 		
 		sendCommand(LivingRoom_PWM_enabled, ON)
-		
-//		dm_hi70 = now
 		
 	} else if (newState == "HI_B") {
 		sendCommand(Heating_Boiler_HI, ON)
@@ -392,16 +345,12 @@ then
 		sendCommand(LivingRoom_PWM_enabled, OFF)
 		sendCommand(Heating_Valve_LivingRoom, OFF)
 		
-	//	dm_hi70 = now
-		
 	} else if (newState == "LO_R" || newState == "LO_50R") {
 		sendCommand(Heating_Boiler_HI, OFF)
 		sendCommand(Heating_Boiler_LO, ON)
 		postUpdate(WarmFloorValveHelper, OFF)
 		
 		sendCommand(LivingRoom_PWM_enabled, ON)
-		
-		//dm_lo40 = now
 		
 	} else if (newState == "LO_50B") {
 		sendCommand(Heating_Boiler_HI, OFF)
@@ -411,11 +360,21 @@ then
 		sendCommand(LivingRoom_PWM_enabled, OFF)
 		sendCommand(Heating_Valve_LivingRoom, OFF)
 		
-		//dm_lo40 = now
-		
 	} else if (newState == "LO_ALL") {
 		sendCommand(Heating_Boiler_HI, OFF)
-		sendCommand(Heating_Boiler_LO, ON)
+		
+		if (previousState == "LO_R" || previousState == "LO_50R" 
+			|| previousState == "LO_50B"
+		) {
+			sendCommand(Heating_Boiler_LO, OFF)
+			logInfo("boiler.cooldown", "Pause boiler heating without interrupting the pump to reduce temperature.")
+			coolDownTimer = createTimer(now.plusSeconds(150), [| // +2.5 min to cool down
+				sendCommand(Heating_Boiler_LO, ON)
+				logInfo("boiler.cooldown", "2.5 min. cool down is over. Switch boiler LO = ON")
+			])
+		} else {
+			sendCommand(Heating_Boiler_LO, ON)
+		}
 
 		sendCommand(LivingRoom_PWM_enabled, OFF)
 		
@@ -434,8 +393,6 @@ then
 			WarmFloorValve.sendCommand(ON)
 			sendCommand(Heating_Valve_LivingRoom, OFF)
 		}
-		
-		//dm_loAll40 = now
 		
 	} else if (newState == "Off") {
 		sendCommand(Heating_Boiler_HI, OFF)
@@ -614,6 +571,22 @@ then
 	pwm_counter = pwm_counter + 1
 	if (pwm_counter == cycle_len)
 		pwm_counter = 0	
+	
+	if (HeatingEventCountDown != Undefined && HeatingEventCountDown != Uninitialized) {
+		var int countDown = (HeatingEventCountDown.state as DecimalType).intValue
+				
+		if (0 < countDown && countDown <= deadband) {
+			event_deadband = true
+		} else {
+			event_deadband = false
+		}
+		logDebug("pwm", "Event count down: {}. deadband: {}", countDown, event_deadband)
+		
+		if (countDown > 0) {
+			countDown = countDown - 1
+			postUpdate(HeatingEventCountDown, countDown)
+		}
+	}
 end
 
 
@@ -624,11 +597,19 @@ when
 then
 	if (LivingRoom_PWM_enabled.state == ON) {
 		// update valve only when PWM control is allowed
-		val newState = LivingRoom_PWM_PV.state.toString
-		logInfo("brodok.rules.pwm", "Living room valve change from {} to {}",
-			Heating_Valve_LivingRoom.state, newState
-		)
-		sendCommand(Heating_Valve_LivingRoom, newState)
+		
+		if (event_deadband) {
+			// Prevent valve toggle. we are in the deadband.
+			logInfo("pwm", "Keep Heating_Valve_LivingRoom in  {}  state due to EVENT DEADBAND", 
+				Heating_Valve_LivingRoom.state
+			)
+		} else {
+			val newState = LivingRoom_PWM_PV.state.toString
+			logInfo("brodok.rules.pwm", "Living room valve change from {} to {}",
+				Heating_Valve_LivingRoom.state, newState
+			)
+			sendCommand(Heating_Valve_LivingRoom, newState)
+		}
 	}
 end
 
@@ -638,16 +619,13 @@ when
 then
 	val pv = LivingRoom_PWM_PV.state.toString
 	var valveState = Heating_Valve_LivingRoom.state
-	// prevent short on -> off -> on transitions when diff < 6 min
-	// diff = Radiators_PWM_Cycle - pwm_counter [min]
-
-	//var pwm_sp = (LivingRoom_PWM_SP.state as DecimalType).intValue
 	
+	// prevent short on -> off -> on transitions < 6 min
 	if (ON_deadband && /*pwm_sp != 0 &&*/ valveState == ON) {
-		logInfo("brodok.rules", 
+		logInfo("pwm.deadband", 
 			"Keep Heating_Valve_LivingRoom [ OPEN ] despite PWM control PV is {}.", pv)
 	} else if (OFF_deadband && /*pwm_sp != 100 &&*/ valveState == OFF) {
-		logInfo("brodok.rules", 
+		logInfo("pwm.deadband", 
 			"Keep Heating_Valve_LivingRoom [ CLOSED ] despite PWM control PV is {}.", pv)
 	} else {
 		logInfo("brodok.rules", "ENABLE Living room valve PWM control. PV = {}", pv)
@@ -662,13 +640,6 @@ rule "Event metadata changed"
 when 
     Item HeatingEventRawData received update
 then
-	/*
-	var String json = (HeatingEventRawData.state as StringType).toString
-	var String type = transform("JSONPATH", "$.type", json)
-	logInfo("calendar.event", "Event received: {}", type)
-	sendCommand(CalendarHeatingRequest, type)
-	* 
-	*/
 	callScript("ParseHeatingEvent")
 end
 

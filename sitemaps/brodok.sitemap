@@ -8,9 +8,11 @@ sitemap brodok label="Main Menu"
 				Text item=Heating_Boiler_LO valuecolor=[OFF="lightgray", ON="green"]
 				Text item=BoilerHeatingMode label="Mode [%s]" valuecolor=[Off="lightgray",HI="red", HI_B="red", LO_R="orange",LO_50R="orange",LO_50B="orange",LO_ALL="orange"]
 			}
-			Frame label="Boiler trends" {
-				Chart item=gTrend service="rrd4j" period=12h refresh=60
-			}
+			/*Frame label="Boiler trends" {
+				//Chart item=gTrend service="rrd4j" period=12h refresh=60
+				//Webview url="http://localhost:8980/chart?groups=gTrend&period=8h&h=300&w=600" height=10
+				//Image url="http://localhost:8980/chart?groups=gTrend&period=8h&h=300&w=600" refresh=60000
+			}*/
 			Frame label="Boiler parameters" {
 				Text item=ActiveBoilerHeatingElements
 				Text item=BoilerEventPower
@@ -28,8 +30,6 @@ sitemap brodok label="Main Menu"
 			Frame label="Model parameters" {
 				Setpoint item=HeatLoadFactor minValue=60 maxValue=125 step=5.0
 				Setpoint item=HeatCompensation minValue=300 maxValue=800 step=100
-				//Setpoint item=ActiveBoilerHeatingElements minValue=1 maxValue=6 step=1
-				//Setpoint item=LO_HI_Ratio minValue=50 maxValue=75 step=5	
 			}
 			Frame label="Other" {
 				Text item=TempSensor
@@ -40,20 +40,7 @@ sitemap brodok label="Main Menu"
 			}
 		}
 		
-		Group item=gPWM label="PWM settings" /*  icon="pie" {
-			Frame label="Parameters" {
-				Setpoint item=LivingRoom_PWM_SP minValue=0 maxValue=100 step=5
-				Text item=LivingRoom_PWM_PV
-				Text item=LivingRoom_PWM_enabled
-				Switch item=Heating_Valve_LivingRoom
-			}
-			
-			Frame label="PWM valve control chart" {
-				Chart item=LivingRoom_PWM_PV service="rrd4j" period=h refresh=20 height=90
-				Chart item=LivingRoom_PWM_enabled service="rrd4j" period=h refresh=20 height=90
-				Chart item=Heating_Valve_LivingRoom service="rrd4j" period=h refresh=20 height=90
-			}
-		}*/
+		Group item=gPWM label="PWM settings" 
 		//Group item=gDailyMeters
 	}
 	
@@ -62,14 +49,7 @@ sitemap brodok label="Main Menu"
 		Group item=Modbus label="Состояние и включатель"
 	}
 	*/
-	
-	/*
-	Frame label="Boiler mode" {
-		Text item=Heating_Boiler_Mode label="Текущий режим работы котла [%s]  "
-		Selection item=Heating_Boiler_Mode label="Изменить режим" mappings=[Off="Выкл.", HI="Только радиаторы", LO="Теплый пол + радиаторы"]	
-		
-	}
-	*/
+
 	Frame label="Heating control" {
 		Group item=gHeatingReq label="Setup" icon="config" {
 			Frame label="Boiler manual control" {

@@ -11,8 +11,14 @@ var String type = transform("JSONPATH", "$.type", json)
 if (type == "Off") {
 	sendCommand(HeatingEventPeriod_m, 0)
 	sendCommand(BoilerEventPower, 0)
+	
+	postUpdate(HeatingEventCountDown, 0)
+	
 } else if (type == "CAL") {
 	// TODO
+	if (HeatingEventPeriod_m != Undefined && HeatingEventPeriod_m != Uninitialized) {
+		postUpdate(HeatingEventCountDown, HeatingEventPeriod_m.state)
+	}
 } else {
 	
 	var String duration = transform("JSONPATH", "$.duration", json)
@@ -24,12 +30,12 @@ if (type == "Off") {
 	sendCommand(HeatingEventPeriod_m, duration)
 	sendCommand(BoilerEventPower, power)
 	
+	postUpdate(HeatingEventCountDown, duration)
+	
 	if (type == "LO_ALL") {
 		sendCommand(Kitchen_PWM_SP, pwm)
 	} else {
 		sendCommand(LivingRoom_PWM_SP, pwm)
 	}
 }
-	
-//	sendCommand(CalendarHeatingRequest, type)
 
