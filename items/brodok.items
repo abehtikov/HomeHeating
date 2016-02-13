@@ -120,9 +120,9 @@ Number 	Heating_FlowRate		"Total flow rate of heat medium [%.1f l/min]"		(gBoile
 /* Boiler power depends on boiler mode and flow rate */
 Number	Heating_Power_Estimate	"Estimated boiler power [%.1f kW]"					(gBoiler)
 /* Boiler's delivery water temperature */
-Number 	Heating_Boiler_Delivery_Water_Temp	"Delivery water temp. [%.1f °C]"		<temperature>	(gBoiler)
+Number 	Heating_Boiler_Delivery_Water_Temp	"Delivery water temp. [%.1f °C]"		<temperature>	(gBoiler, gTrend)
 /* Boiler's return water temperature */
-Number 	Heating_Boiler_Return_Water_Temp	"Return water temp. [%.1f °C]"			<temperature>	(gBoiler)
+Number 	Heating_Boiler_Return_Water_Temp	"Return water temp. [%.1f °C]"			<temperature>	(gBoiler, gTrend)
 
 /* Indoor Temperatures */
 Number TempSensor_Corridor	 	"Прихожая [%.1f °C]"	<temperature>	(TempSensor)
