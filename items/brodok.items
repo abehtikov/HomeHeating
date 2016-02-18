@@ -86,11 +86,15 @@ Number HV_Kitchen_Toggle_Counter	"Kitchen valve toggles [(%d)]"				(ValveToggleC
 Number Kitchen_PWM_SP		"Kitchen underfloor PWM duty cycle [%d %%]"	(Heating, gPWM, gHEvent)	
 Switch Kitchen_PWM_PV		"Kitchen PWM PV [%s]" (Heating, gPWM)	
 
-Switch Heating_Valve_Bath_floor	"Bath Floor" 	<heating>	(Heating, WarmFloorValve, ThermoValve, RelaysGPIO)	{gpio="pin:22 activelow:yes"} // Relay #3 
+Switch Heating_Valve_Bath_floor	"Bath & Corridor" 	<heating>	(Heating, WarmFloorValve, ThermoValve, RelaysGPIO)	{gpio="pin:22 activelow:yes"} // Relay #3 
 Number HV_Bath_Floor_Toggle_Counter	"Bath floor valve toggles [(%d)]"				(ValveToggleCycle)
 
+/* 
+ * Bath & corridor share the same relay output. Excluding binding for corridor.
+ *
 Switch Heating_Valve_Corridor 	"Corridor" 		<heating>	(Heating, WarmFloorValve, ThermoValve, RelaysGPIO)	{gpio="pin:23 activelow:yes"} // Relay #4
 Number HV_Corridor_Toggle_Counter	"Towel warmer toggles [(%d)]"				(ValveToggleCycle)
+ */
 
 /* This mode is secondary and controlled by room thermostat. Boiler heating supply temperature should be set to 35-45 C, 
  * to meet warm floor heating requirements. By default: OFF

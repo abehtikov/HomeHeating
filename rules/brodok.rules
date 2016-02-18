@@ -55,12 +55,9 @@ then
 	}
 	logDebug("brodok.rules", "calculated power demand kW: " + demand/1000)
 	if (processUpdate == 1) {
-		//postUpdate(HeatPowerDemand_Current, (demand/1000))	
-		//postUpdate(PowerDemandLastUpdate, new DateTimeType())
-		//HeatPowerDemand_Current.postUpdate(demand/1000)
 		postUpdate(HeatPowerDemand_DailyAvg, demand/1000)
 		PowerDemandLastUpdate.postUpdate(new DateTimeType())
-		callScript("demo")
+		//callScript("demo")
 	}
 end
 

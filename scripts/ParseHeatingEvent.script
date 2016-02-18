@@ -30,7 +30,7 @@ if (type == "Off") {
 	sendCommand(HeatingEventPeriod_m, duration)
 	sendCommand(BoilerEventPower, power)
 	
-	postUpdate(HeatingEventCountDown, duration)
+	sendCommand(HeatingEventCountDown, duration)
 	
 	if (type == "LO_ALL") {
 		sendCommand(Kitchen_PWM_SP, pwm)
