@@ -516,6 +516,39 @@ then
 	sendHttpGetRequest(url)
 end
 
+
+/*
+ * Update thingspeak solar channel
+ */
+rule "Update ThingSpeak TCollector"
+when
+	Item Heating_Boiler_Delivery_Water_Temp received update
+then
+	val value = (Heating_Boiler_Delivery_Water_Temp.state as DecimalType).doubleValue
+	val api_key = "4ZYKQYVC6E4WYELM"
+	var url = String::format("https://api.thingspeak.com/update?api_key=%2$s&field1=%1$.2f",
+		value, api_key
+	)
+	logDebug("brodok.rules", "Update thingspeak: " + url)
+	sendHttpGetRequest(url)
+end
+
+/*
+ * Update thingspeak solar channel
+ */
+rule "Update ThingSpeak TReturn"
+when
+	Item Heating_Boiler_Return_Water_Temp received update
+then
+	val value = (Heating_Boiler_Return_Water_Temp.state as DecimalType).doubleValue
+	val api_key = "4ZYKQYVC6E4WYELM"
+	var url = String::format("https://api.thingspeak.com/update?api_key=%2$s&field2=%1$.2f",
+		value, api_key
+	)
+	logDebug("brodok.rules", "Update thingspeak: " + url)
+	sendHttpGetRequest(url)
+end
+
 /*
  * PWM related rules
  * 
