@@ -520,14 +520,16 @@ end
 /*
  * Update thingspeak solar channel
  */
-rule "Update ThingSpeak TCollector"
+rule "Update ThingSpeak solar channel"
 when
-	Item Heating_Boiler_Delivery_Water_Temp received update
+	Item Heating_Boiler_Delivery_Water_Temp received update or
+	Item Heating_Boiler_Return_Water_Temp received update
 then
-	val value = (Heating_Boiler_Delivery_Water_Temp.state as DecimalType).doubleValue
+	val field1 = (Heating_Boiler_Delivery_Water_Temp.state as DecimalType).doubleValue
+	val field2 = (Heating_Boiler_Return_Water_Temp.state as DecimalType).doubleValue
 	val api_key = "4ZYKQYVC6E4WYELM"
-	var url = String::format("https://api.thingspeak.com/update?api_key=%2$s&field1=%1$.2f",
-		value, api_key
+	var url = String::format("https://api.thingspeak.com/update?api_key=%3$s&field1=%1$.2f&field2=%2$.2f",
+		field1, field2, api_key
 	)
 	logDebug("brodok.rules", "Update thingspeak: " + url)
 	sendHttpGetRequest(url)
@@ -535,7 +537,7 @@ end
 
 /*
  * Update thingspeak solar channel
- */
+ *
 rule "Update ThingSpeak TReturn"
 when
 	Item Heating_Boiler_Return_Water_Temp received update
@@ -548,6 +550,7 @@ then
 	logDebug("brodok.rules", "Update thingspeak: " + url)
 	sendHttpGetRequest(url)
 end
+*/
 
 /*
  * PWM related rules
@@ -713,4 +716,16 @@ then
 		postUpdate(trValveKProxy, 25)
 	else
 		postUpdate(trValveKProxy, 20)
+end
+
+// solar pump remote control
+rule "Solar pump manual control"
+when
+	Item PumpControl received command
+then
+	if (receivedCommand == "on") {
+		sendCommand(SolarPump, ON)
+	} else {
+		sendCommand(SolarPump, OFF)
+	}
 end

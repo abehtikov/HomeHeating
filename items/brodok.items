@@ -18,6 +18,8 @@ Group gSetPoints	(gStatus)
 Group gPWM			(gStatus)
 Group gTrend	(gStatus) // check boiler trends during test period
 
+Group gSolar	(gStatus) // test solar pump & T-diff controller
+
 // initialize values after in a short delay after System startup.
 Switch AfterStartup
 
@@ -28,6 +30,9 @@ Number OvenStatus_MSB		"Register 0. status [(%d)]"			(Modbus)	{modbus="oven:0"}
 Number OvenStatus_LSB		"Register 2. Counter [(%d)]"		(Modbus)	{modbus="oven:2"}
 Switch OvenSwitch 			"Oven switch"						(Modbus)	{modbus="oven:1"}
 */
+
+Switch SolarPump	"Solar pump [%s]"	(gSolar, RelaysGPIO)	{gpio="pin:23 activelow:yes"} // Relay #4
+String PumpControl	"Pump status [%s]"	(gSolar)	{mqtt="<[cloud-mqtt:brodok/solar/pump:command:REGEX((on|off))]"}
 
 // Boiler trends
 Number trBoilerTemp	"Boiler temperature [%d C]" (gTrend) // 20 - 40 - 50 - 70 - 80
@@ -212,5 +217,4 @@ DateTime Sunrise_Time  			"Восход [%1$tH:%1$tM]"  			<clock>		(gStatus)	/*
 
 DateTime CivilDawn_Time  		"Заря [%1$tH:%1$tM]" 				<clock>		(gStatus)	{astro="planet=sun, type=civilDawn, property=start"}
 DateTime CivilDusk_Time  		"Гражд. сумерки [%1$tH:%1$tM]" 		<clock>		(gStatus)	{astro="planet=sun, type=civilDusk, property=end"}
-
 
