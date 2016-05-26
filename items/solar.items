@@ -25,9 +25,9 @@ Switch	HeatingSupportSw	"Heating support"	(gStatus, gRuntime)
 // Trigger collector overheating protection when family is away
 Switch	HolidayModeSw		"Holiday mode"		(gStatus)
 // Weather prediction
-Contact	RainyTomorrow		"Rain showers forecast"	(gWeather)
+Switch	RainyTomorrow		"Rain showers forecast"	(gWeather)
 // Collector is in shadow
-Contact CollectorInShadow	"Collector in shadow"	(gStatus, gRuntime)
+Switch CollectorInShadow	"Collector in shadow"	(gStatus, gRuntime)
 // Manual or AUTO operating mode
 Switch ManualOperation	"Manual operation"	(gStatus, gRuntime)
 // Solar irradiation sensor on collector's surface
