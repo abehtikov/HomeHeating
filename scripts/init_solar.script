@@ -13,7 +13,7 @@ postUpdate(tnDeltaTon, 8)
 postUpdate(tnDeltaToff, 3)
 //postUpdate(tnCollectorPowerFactor, 62)
 postUpdate(tnTminHeatingSupport, 22)
-postUpdate(pFlowRate, 42)
+postUpdate(pFlowRate, 56)
 
 postUpdate(DHW_Request, ON)
 postUpdate(HeatingSupportSw, OFF)

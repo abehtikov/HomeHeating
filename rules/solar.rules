@@ -6,10 +6,12 @@ import org.joda.time.*
 import java.lang.Math
 import org.joda.time.Minutes
 
-val double alpha = 0.15 // low pass filter tuning param
+var double alpha = 0.15 // low pass filter tuning param
 // RC = sampling_period * (1 - alpha) / alpha
 // RC - time constant
 // when alpha = 0.5, time constant is equal to the sampling_period
+// alpha=0.15 --> 6 * sampling_period
+// alpha=0.1  --> 9 * sampling_period
 
 var double filteredValue = -99 // workaround for null
 
@@ -82,14 +84,11 @@ then
 				logInfo("solar", "delta T:{} C, delta T OFF: {} C --> switching solar pump OFF.", deltaT, tMinDrop)
 				sendCommand(SolarPumpSw, OFF)
 				postUpdate(rtCollectorPower, 0)
-			}
-			
-			//var powerFactor = (tnCollectorPowerFactor.state as DecimalType).doubleValue
-			//var flow = (pFlowRate.state as DecimalType).doubleValue
-			var powerFactor = (rtPowerDensity.state as DecimalType).doubleValue
-			var power = deltaT * powerFactor
-			// update estimated collector power
-			if (power > 0) {
+				
+			} else {
+				var powerFactor = (rtPowerDensity.state as DecimalType).doubleValue
+				var power = deltaT * powerFactor
+				// update estimated collector power
 				postUpdate(rtCollectorPower, power.intValue)
 			}
 			
@@ -263,4 +262,17 @@ then
 	}
 	
 	postUpdate(rtPowerDensity, value)
+end
+
+
+rule "Update Low Pass Filter"
+when
+	Item tnLowPassAlpha received update
+then
+	val double value = (tnLowPassAlpha.state as DecimalType).doubleValue
+	
+	if (value > 0.05 && value < 0.25) {
+		logInfo("solar", "Low pass filter alpha updated from {} to {}", alpha, value)
+		alpha = value
+	}
 end

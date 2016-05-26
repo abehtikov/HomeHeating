@@ -62,7 +62,8 @@ Number	tnDeltaToff	"Delta T off [%d K]"	(gTuning) // 2K
 Number	tnTminHeatingSupport	"Heating support Min Temperature [%d C]"	(gTuning)
 // ~62 Watt/1 degree delta for 40% glycol @ 1 l/min. flow
 // ~70 W/K	for water @ 1 l/min. flow
-Number	tnCollectorPowerFactor	"Estimated power @ 1 l/min [%d Watt/delta 1K]"	(gTuning)
+//Number	tnCollectorPowerFactor	"Estimated power @ 1 l/min [%d Watt/delta 1K]"	(gTuning)
+Number tnLowPassAlpha "Low pass filter alpha [%.2f]"	(gTuning)	{mqtt="<[cloud-mqtt:brodok/solar/tuning/lowPassAlpha:state:default]"}
 
 
 // Runtime values

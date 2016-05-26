@@ -7,13 +7,14 @@ sitemap solar label="Solar DHW"
 	Frame label="Controller parameters" {
 		Group item=gTuning
 	}
+	
+	Frame label="Thermal system parameters" {
+		Group item=gHeatingMedium
+	}
 
 	Frame label="Sun position" {
 		Text item=SunAzimuth
 		Text item=SunElevation
-	}
-	
-	Frame label="Текущая дата" {
-		Text item=CurrentDate
+		Text item=Date
 	}
 }
