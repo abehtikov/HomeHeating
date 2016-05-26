@@ -31,7 +31,7 @@ Number OvenStatus_LSB		"Register 2. Counter [(%d)]"		(Modbus)	{modbus="oven:2"}
 Switch OvenSwitch 			"Oven switch"						(Modbus)	{modbus="oven:1"}
 */
 
-Switch SolarPump	"Solar pump [%s]"	(gSolar, RelaysGPIO)	{gpio="pin:23 activelow:yes"} // Relay #4
+Switch SolarPump	"Solar pump [%s]"	(gSolar, RelaysGPIO)	// {gpio="pin:23 activelow:yes"} // Relay #4
 String PumpControl	"Pump status [%s]"	(gSolar)	{mqtt="<[cloud-mqtt:brodok/solar/pump:command:REGEX((on|off))]"}
 
 // Boiler trends
@@ -177,7 +177,7 @@ Number Duration_ALL_40C		"Warm floors & radiators [%.2f h]"	(gHeatingEQ)
 Number Duration_R_70C		"Radiators 70C [%.2f h]"		(gHeatingEQ)
 Number Duration_R_40C		"Radiators 40C [%.2f h]"	(gHeatingEQ)
 
-Group gDailyMeters	"Daily meters as is"
+Group gDailyMeters	"Daily meters as is" (Heating)
 Number LO_R_dailyMeter	"Radiators 40C [%d s]"	(gDailyMeters)
 Number HI_dailyMeter	"Radiators 70C [%d s]"	(gDailyMeters)
 Number LO_ALL_dailyMeter	"Warm floors & Radiators [%d s]"	(gDailyMeters)
@@ -190,7 +190,7 @@ Number wd_ev_hh	"Working days evening [%.1f h]" 	(gWarmFloorComfortHours) // fro
 Number we_mo_hh "Weekends morning [%.1f h]"			(gWarmFloorComfortHours)
 Number we_ev_hh "Weekends evening [%.1f h]"			(gWarmFloorComfortHours)
 
-Number 	Temperature   	"Температура воздуха [%.1f °C]"		<temperature>	(gWeather, gHeatingEQ)	{weather="locationId=home, type=temperature, property=current"}
+Number 	Temperature   	"Температура воздуха [%.1f °C]"		<temperature>	(gWeather, gHeatingEQ, gSolarTrend)	{weather="locationId=home, type=temperature, property=current"}
 Number	Humidity      	"Влажность [%d %%]"       							(gWeather)	{weather="locationId=home, type=athmosphere, property=humidity"}
 Number	AtmPressure_mbar		"Pressure [%.2f mbar]"		(gWeather)		{weather="locationId=home, type=athmosphere, property=pressure"}
 Number	AtmPressure_mmHg	"Атмосферное давление [%d mmHg]" (gWeather)

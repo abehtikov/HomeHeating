@@ -1,0 +1,247 @@
+import org.openhab.core.library.types.*
+import org.openhab.core.persistence.*
+import org.openhab.model.script.actions.*
+import java.util.Date
+import org.joda.time.*
+import java.lang.Math
+import org.joda.time.Minutes
+
+val double alpha = 0.15 // low pass filter tuning param
+// RC = sampling_period * (1 - alpha) / alpha
+// RC - time constant
+// when alpha = 0.5, time constant is equal to the sampling_period
+
+var double filteredValue = -99 // workaround for null
+
+val int collectorAzimuthAngle = 234
+
+var boolean pump_on = false
+
+
+/******** Common diff. controller rules   */
+
+rule "Temperature Sensor update"
+when 
+	Item CollectorTemp received update or
+	Item ReturnTemp received update
+then
+	if ((CollectorTemp.state instanceof DecimalType) && 
+		(ReturnTemp.state instanceof DecimalType)) {
+			
+		var tColl = (CollectorTemp.state as DecimalType).doubleValue
+		var tReturn = (ReturnTemp.state as DecimalType).doubleValue
+	
+		var tDelta = tColl - tReturn
+	
+		logDebug("solar", "Temperature drop is: {} K", tDelta)
+	
+		if (filteredValue == -99) {
+			filteredValue = tDelta.doubleValue
+		} else {
+			filteredValue = filteredValue + alpha * (tDelta - filteredValue)
+		}
+		
+		logDebug("solar.rules", "DeltaT after Low Pass filter (a={}) is: {} K", alpha, filteredValue)
+		
+		postUpdate(rtDeltaT, tDelta)
+		postUpdate(rtFiltDeltaT, filteredValue)
+		
+	} else {
+		logInfo("solar", "Either collector or return temperature is undefined.")
+	}
+end
+
+rule "Return temperature changed"
+when
+	Item ReturnTemp changed
+then
+	if (SolarPumpSw.state == ON) {
+		val temp = (ReturnTemp.state as DecimalType).doubleValue
+		postUpdate(LatestDhwReturnTemp, temp)
+	}
+	// TODO распознать ступеньку спустя 2-4 минуты после запуска насоса
+end
+
+rule "Low pass Delta T update"
+when 
+	Item rtFiltDeltaT received update
+then
+	var deltaT = (rtFiltDeltaT.state as DecimalType).doubleValue
+	var tColl = (CollectorTemp.state as DecimalType).doubleValue
+	var deltaMax = (tnDeltaTon.state as DecimalType).doubleValue
+	
+	// logInfo("solar", "Execute DeltaT update. Current pump state is: " + SolarPumpSw.state)
+	if (ManualOperation.state == ON) {
+		
+	} else {
+		
+		if (SolarPumpSw.state == ON) {
+			
+			var tMinDrop = (tnDeltaToff.state as DecimalType).doubleValue
+			if (deltaT < tMinDrop) {
+				logInfo("solar", "delta T:{} C, delta T OFF: {} C --> switching solar pump OFF.", deltaT, tMinDrop)
+				sendCommand(SolarPumpSw, OFF)
+				postUpdate(rtCollectorPower, 0)
+			}
+			
+			//var powerFactor = (tnCollectorPowerFactor.state as DecimalType).doubleValue
+			//var flow = (pFlowRate.state as DecimalType).doubleValue
+			var powerFactor = (rtPowerDensity.state as DecimalType).doubleValue
+			var power = deltaT * powerFactor
+			// update estimated collector power
+			postUpdate(rtCollectorPower, power.intValue)
+		// Pump is OFF	
+		} else if ((HeatingSupportSw.state == OFF) && (DHW_Request.state == ON)) { // check the mode
+			
+			var latestDhwReturnTemp = (LatestDhwReturnTemp.state as DecimalType).doubleValue
+			
+			logInfo("solar", "coll: {} C, latest retrun: {} C, delta ON: {} C", 
+				tColl, latestDhwReturnTemp, deltaMax.intValue
+			)
+			// Enable solar DHW
+			var tDiff = tColl - latestDhwReturnTemp
+			if (tDiff > deltaMax) {
+				logInfo("solar", "T-diff between Collector & latest DHW return T: {} K."
+					+ " --> Switching solar pump ON.", tDiff)
+				sendCommand(SolarPumpSw, ON)
+			}
+		// Heating support
+		} else if (HeatingSupportSw.state == ON) {
+			var tMinUnderfloor = (tnTminHeatingSupport.state as DecimalType).doubleValue
+			
+			if (tColl > tMinUnderfloor + deltaMax) {
+				logInfo("solar", "Switching solar pump to support underfloor heating. T coll: {} C", tColl)
+				sendCommand(SolarPumpSw, ON)
+			}
+		}
+	}
+	logInfo("solar", "Heating support: {}, DHW request: {}", HeatingSupportSw.state, DHW_Request.state)
+end	
+
+rule "Solar Pump switches ON"
+when 
+	Item SolarPumpSw changed from OFF to ON
+then
+	// log pump start time
+	pump_on = true
+	postUpdate(PumpStatusON, 65)
+	
+	// avoid switching the pump off until the temperatures stabilize
+	// Low pass filter on deltaT implements this use-case (prevents from switching OFF too early)
+	/* 
+	sendCommand(rtAllowTurnOffPump, OFF)
+	pumpDeadbandTimer = createTimer(now.plusMinutes(9)) [|
+		postUpdate(rtAllowTurnOffPump, ON)
+	]
+	*/
+end
+
+rule "Solar Pump switches OFF"
+when 
+	Item SolarPumpSw changed from ON to OFF
+then
+	// log pump shutdown
+	pump_on = false
+	
+	// remember latest DHW return temperature
+	if (HeatingSupportSw.state == OFF) {
+		var tReturn = (ReturnTemp.state as DecimalType).doubleValue
+		//var delta = (rtFiltDeltaT.state as DecimalType).doubleValue
+		postUpdate(LatestDhwReturnTemp, tReturn /*- delta/2*/)
+		postUpdate(PumpLatestOperation, new DateTimeType())
+	}
+	
+	postUpdate(PumpStatusON, 20) // 20 == Pump OFF
+	
+end
+
+rule "Pump operation hours"
+when
+	Time cron "45 */3 * * * ?"
+then
+	if (pump_on == true) {
+		var state = TotalPumpOperatingHr.state
+		if (state == Undefined || state == Uninitialized) {
+			postUpdate(TotalPumpOperatingHr, 0)
+		} else {
+			val inc = 0.05 // 3 minutes = 0.05 hour
+			var lastValue = (TotalPumpOperatingHr.state as DecimalType).doubleValue
+			postUpdate(TotalPumpOperatingHr, lastValue + inc)
+		}
+	}
+end
+
+rule "Sun position update"
+when
+	Item SunAzimuth received update
+then
+	var azimuth = (SunAzimuth.state as DecimalType).intValue
+	var elevation = (SunElevation.state as DecimalType).doubleValue
+	
+	val minAngle = collectorAzimuthAngle - 90
+	val maxAngle = collectorAzimuthAngle + 90
+	
+	logInfo("solar", "Sun azimuth: {} deg", azimuth)
+	
+	
+	if (elevation < 0) {
+		postUpdate(CollectorInShadow, ON)
+	}
+	// horizontal shadow criteria
+	else if (azimuth > minAngle && azimuth < maxAngle) {
+		postUpdate(CollectorInShadow, OFF)
+	} else {
+		postUpdate(CollectorInShadow, ON)
+	}
+end
+
+/*  End of Common diff. controller rules */
+
+rule "Update ThingSpeak Solar channel"
+when
+	Time cron "15 * * * * ?"
+then
+	val field1 = (CollectorTemp.state as DecimalType).doubleValue
+	val field2 = (ReturnTemp.state as DecimalType).doubleValue
+	var field3 = 0
+	if (SolarPumpSw.state == ON) { field3 = 1 }
+	val field4 = (rtFiltDeltaT.state as DecimalType).doubleValue
+	
+	val api_key = "4ZYKQYVC6E4WYELM"
+	var url = String::format("https://api.thingspeak.com/update?"
+		+ "api_key=%5$s"
+		+ "&field1=%1$.2f"
+		+ "&field2=%2$.2f"
+		+ "&field3=%3$d"
+		+ "&field4=%4$.2f",
+		field1, field2, field3, field4, api_key
+	)
+	logDebug("brodok.rules", "Update thingspeak channel 61471: " + url)
+	sendHttpGetRequest(url)
+end	
+
+rule "Startup"
+when
+	System started
+then	
+	callScript("init_solar")
+end
+
+
+rule "Update power density" // Удельная мощность теплоносителя Ватт/градус К
+when
+	Item pHeatingCapacity received update or
+	Item pFlowRate received update
+then
+	var double value = 60.0 //by default
+	if (pHeatingCapacity.state instanceof DecimalType &&
+		pFlowRate.state instanceof DecimalType) {
+		
+		val capacity = (pHeatingCapacity.state as DecimalType).doubleValue
+		val flowRate = (pFlowRate.state as DecimalType).doubleValue
+		
+		value = (capacity * flowRate).doubleValue
+	}
+	
+	postUpdate(rtPowerDensity, value)
+end

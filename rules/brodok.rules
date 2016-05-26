@@ -78,7 +78,7 @@ then
 	postUpdate(LivingRoom_PWM_SP, 50)
 	postUpdate(Kitchen_PWM_SP, 80)
 	postUpdate(Heating_Valve_Kitchen, OFF) // normally closed
-	postUpdate(Radiators_PWM_Cycle, 120) // 120 (2h) by default
+	postUpdate(Radiators_PWM_Cycle, 240) // 4h by default
 	postUpdate(Valve_Toggle_Deadband, 7) // minutes
 	
 	postUpdate(BoilerEventPower, 0)
@@ -471,10 +471,11 @@ then
 	}
 end
 
-
+/*
 rule "Average ambient temperature"
-when
-	Time cron "0 0 */2 * * ?"
+when*/
+//	Time cron "0 0 */2 * * ?"
+/*
 then
 	var ma = Temperature.averageSince(now.minusHours(24), "rrd4j")
 	logInfo("temp.moving.average", "Moving average 24h: " + ma)
@@ -487,7 +488,7 @@ end
 
 /*
  * Min and Max outside temperatures
- */
+ *
 rule "Update max and min temperatures"
 when
 	Item Temperature changed or
@@ -498,7 +499,7 @@ then
 	postUpdate(Weather_Temp_Min, Temperature.minimumSince(now.toDateMidnight).state)
 	postUpdate(Weather_LastUpdate, new DateTimeType())
 end
-
+*/
 
 /*
  * Update thingspeak channel
@@ -516,41 +517,6 @@ then
 	sendHttpGetRequest(url)
 end
 
-
-/*
- * Update thingspeak solar channel
- */
-rule "Update ThingSpeak solar channel"
-when
-	Item Heating_Boiler_Delivery_Water_Temp received update or
-	Item Heating_Boiler_Return_Water_Temp received update
-then
-	val field1 = (Heating_Boiler_Delivery_Water_Temp.state as DecimalType).doubleValue
-	val field2 = (Heating_Boiler_Return_Water_Temp.state as DecimalType).doubleValue
-	val api_key = "4ZYKQYVC6E4WYELM"
-	var url = String::format("https://api.thingspeak.com/update?api_key=%3$s&field1=%1$.2f&field2=%2$.2f",
-		field1, field2, api_key
-	)
-	logDebug("brodok.rules", "Update thingspeak: " + url)
-	sendHttpGetRequest(url)
-end
-
-/*
- * Update thingspeak solar channel
- *
-rule "Update ThingSpeak TReturn"
-when
-	Item Heating_Boiler_Return_Water_Temp received update
-then
-	val value = (Heating_Boiler_Return_Water_Temp.state as DecimalType).doubleValue
-	val api_key = "4ZYKQYVC6E4WYELM"
-	var url = String::format("https://api.thingspeak.com/update?api_key=%2$s&field2=%1$.2f",
-		value, api_key
-	)
-	logDebug("brodok.rules", "Update thingspeak: " + url)
-	sendHttpGetRequest(url)
-end
-*/
 
 /*
  * PWM related rules
@@ -724,8 +690,8 @@ when
 	Item PumpControl received command
 then
 	if (receivedCommand == "on") {
-		sendCommand(SolarPump, ON)
+		sendCommand(SolarPumpSw, ON)
 	} else {
-		sendCommand(SolarPump, OFF)
+		sendCommand(SolarPumpSw, OFF)
 	}
 end

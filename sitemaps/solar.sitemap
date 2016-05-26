@@ -1,0 +1,19 @@
+sitemap solar label="Solar DHW"
+{
+	Frame label="Solar thermal" {
+		Group item=gRuntime label="Runtime"
+	}
+
+	Frame label="Controller parameters" {
+		Group item=gTuning
+	}
+
+	Frame label="Sun position" {
+		Text item=SunAzimuth
+		Text item=SunElevation
+	}
+	
+	Frame label="Текущая дата" {
+		Text item=CurrentDate
+	}
+}

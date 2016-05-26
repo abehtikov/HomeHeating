@@ -1,0 +1,74 @@
+
+// Solar application related
+Group gPump			(gStatus)
+Group gHeatingMedium	(All)
+Group gTuning			
+Group gDHW
+Group gRuntime
+Group gSolarTrend
+
+// initialize values after in a short delay after System startup.
+//Switch AfterStartup
+
+// Temperature sensors
+Number CollectorTemp	"Collector temperature [%.1f °C]"	<temperature>	(gStatus, gRuntime, gSolarTrend)		{mqtt="<[cloud-mqtt:brodok/solar/collector_temp:state:default]"}
+// Either from DHW boiler or from Heat exchanger
+Number ReturnTemp		"Return temperature	[%.1f °C]"		<temperature>	(gStatus, gRuntime, gSolarTrend)		{mqtt="<[cloud-mqtt:brodok/solar/return_temp:state:default]"}
+//Number OutsideTemp		"Ambient temperature [%.1f °C]"		<temperature>	(gStatus, gWeather)		{weather="locationId=home, type=temperature, property=current"}
+// Remember latest return temperature when solar pump was on @see PumpLastOperation
+Number	LatestDhwReturnTemp	"Latest monitored DHW return [%.1f °C]"	<temperature>	(gStatus)
+
+// Other Inputs
+Switch 	DHW_Request		"DHW request"		(gStatus)
+// During a Heating season it's worth to use collector for underfloor heating
+Switch	HeatingSupportSw	"Heating support"	(gStatus, gRuntime)
+// Trigger collector overheating protection when family is away
+Switch	HolidayModeSw		"Holiday mode"		(gStatus)
+// Weather prediction
+Contact	RainyTomorrow		"Rain showers forecast"	(gWeather)
+// Collector is in shadow
+Contact CollectorInShadow	"Collector in shadow"	(gStatus, gRuntime)
+// Manual or AUTO operating mode
+Switch ManualOperation	"Manual operation"	(gStatus, gRuntime)
+// Solar irradiation sensor on collector's surface
+Number SolarRadiation	"Radiation on collector [%.1f Volt]"	(gStatus, gRuntime)
+// Sun position
+// azimuth and elevation
+Number   SunAzimuth        "Azimuth [%.0f °]"     {astro="planet=sun, type=position, property=azimuth"}
+Number   SunElevation      "Elevation [%.2f °]" (gSolarTrend)  {astro="planet=sun, type=position, property=elevation"}
+
+
+// Solar Pump 
+Switch SolarPumpSw	"Solar Pump"		(gPump, gRuntime, RelaysGPIO)	{gpio="pin:23 activelow:yes"} // Relay #4
+// solar pump status for chart
+Number PumpStatusON	"Solar pump status"	(gSolarTrend) // 30 - off, 65 - on
+Number PumpOperationAnnualHr	"Annual operating hours [%d h]"		(gPump)
+Number PumpOperationThisMonthHr	"Current month operation [%d h]"	(gPump)
+Number PumpOperationTodayHr		"Today [%d h]"					(gPump)
+Number TotalPumpOperatingHr		"Total pump operation [%d h]"		(gPump)
+// timestamp when the pump was on last time
+DateTime	PumpLatestOperation	"Latest operation [%1$tA,  %1$tH:%1$tM]"	(gPump)
+
+// Heating medium
+Number pHeatingCapacity	"Heating Capacity [%.1f J/(kg*K)]"	(gHeatingMedium)
+Number pGlycolPercent	"Glycol content [%.1f %%]"			(gHeatingMedium)
+Number pFlowRate		"Estimated flow [%.1f l/h]"		(gHeatingMedium)
+Number pSystemVolume	"System volume [%d ltr]"			(gHeatingMedium)
+
+
+// Tuning parameters
+Number	tnDeltaTon	"Delta T on [%d K]"		(gTuning) // 8K (5 - 10K)
+Number	tnDeltaToff	"Delta T off [%d K]"	(gTuning) // 2K
+Number	tnTminHeatingSupport	"Heating support Min Temperature [%d C]"	(gTuning)
+// ~62 Watt/1 degree delta for 40% glycol @ 1 l/min. flow
+// ~70 W/K	for water @ 1 l/min. flow
+Number	tnCollectorPowerFactor	"Estimated power @ 1 l/min [%d Watt/delta 1K]"	(gTuning)
+
+
+// Runtime values
+Number	rtCollectorPower	"Estimated collector power	[%d Watt]"	(gRuntime)
+Number	rtDeltaT			"Current temperature drop [%.1f K]"		(gRuntime)
+Number	rtFiltDeltaT	"Filtered temperature drop [%.1f K]"	(gRuntime, gSolarTrend)
+Number	rtPowerDensity	"Удельная мощность [%.1f W/K]"	(gRuntime)
+
+
