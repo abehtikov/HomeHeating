@@ -22,7 +22,7 @@ var boolean pump_on = false
 
 rule "Temperature Sensor update"
 when 
-	Item CollectorTemp received update or
+	//Item CollectorTemp received update or
 	Item ReturnTemp received update
 then
 	if ((CollectorTemp.state instanceof DecimalType) && 
@@ -89,13 +89,16 @@ then
 			var powerFactor = (rtPowerDensity.state as DecimalType).doubleValue
 			var power = deltaT * powerFactor
 			// update estimated collector power
-			postUpdate(rtCollectorPower, power.intValue)
+			if (power > 0) {
+				postUpdate(rtCollectorPower, power.intValue)
+			}
+			
 		// Pump is OFF	
 		} else if ((HeatingSupportSw.state == OFF) && (DHW_Request.state == ON)) { // check the mode
 			
 			var latestDhwReturnTemp = (LatestDhwReturnTemp.state as DecimalType).doubleValue
 			
-			logInfo("solar", "coll: {} C, latest retrun: {} C, delta ON: {} C", 
+			logDebug("solar", "coll: {} C, latest retrun: {} C, delta ON: {} C", 
 				tColl, latestDhwReturnTemp, deltaMax.intValue
 			)
 			// Enable solar DHW
@@ -115,7 +118,7 @@ then
 			}
 		}
 	}
-	logInfo("solar", "Heating support: {}, DHW request: {}", HeatingSupportSw.state, DHW_Request.state)
+	logDebug("solar", "Heating support: {}, DHW request: {}", HeatingSupportSw.state, DHW_Request.state)
 end	
 
 rule "Solar Pump switches ON"
@@ -149,6 +152,8 @@ then
 		//var delta = (rtFiltDeltaT.state as DecimalType).doubleValue
 		postUpdate(LatestDhwReturnTemp, tReturn /*- delta/2*/)
 		postUpdate(PumpLatestOperation, new DateTimeType())
+		
+		logInfo("solar", "DHW return temperature: {} deg.", tReturn)
 	}
 	
 	postUpdate(PumpStatusON, 20) // 20 == Pump OFF
@@ -195,9 +200,21 @@ then
 	}
 end
 
+rule "Collector shadow ON/OFF"
+when 
+	Item CollectorInShadow changed from ON to OFF
+then
+	var azimuth = (SunAzimuth.state as DecimalType).intValue
+	var elevation = (SunElevation.state as DecimalType).doubleValue
+	
+	logInfo("solar", "Collector goes out of shadow."
+		+ " Sun azimuth: {}, altitude: {}", azimuth, elevation)
+end
+
+
 /*  End of Common diff. controller rules */
 
-rule "Update ThingSpeak Solar channel"
+rule "Update ThingSpeak Solar temperatures"
 when
 	Time cron "15 * * * * ?"
 then
@@ -216,7 +233,7 @@ then
 		+ "&field4=%4$.2f",
 		field1, field2, field3, field4, api_key
 	)
-	logDebug("brodok.rules", "Update thingspeak channel 61471: " + url)
+	logDebug("solar", "Update thingspeak channel 61471: " + url)
 	sendHttpGetRequest(url)
 end	
 
@@ -240,7 +257,9 @@ then
 		val capacity = (pHeatingCapacity.state as DecimalType).doubleValue
 		val flowRate = (pFlowRate.state as DecimalType).doubleValue
 		
-		value = (capacity * flowRate).doubleValue
+		value = (capacity * flowRate / 3600.0).doubleValue
+		
+		logInfo("solar", "Power density: {} W/deg C, Flow rate: {} l/h", value, flowRate)
 	}
 	
 	postUpdate(rtPowerDensity, value)

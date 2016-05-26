@@ -35,7 +35,7 @@ Number SolarRadiation	"Radiation on collector [%.1f Volt]"	(gStatus, gRuntime)
 // Sun position
 // azimuth and elevation
 Number   SunAzimuth        "Azimuth [%.0f °]"     {astro="planet=sun, type=position, property=azimuth"}
-Number   SunElevation      "Elevation [%.2f °]" (gSolarTrend)  {astro="planet=sun, type=position, property=elevation"}
+Number   SunElevation      "Sun elevation [%.2f °]" (gSolarTrend)  {astro="planet=sun, type=position, property=elevation"}
 
 
 // Solar Pump 
@@ -68,7 +68,7 @@ Number	tnCollectorPowerFactor	"Estimated power @ 1 l/min [%d Watt/delta 1K]"	(gT
 // Runtime values
 Number	rtCollectorPower	"Estimated collector power	[%d Watt]"	(gRuntime)
 Number	rtDeltaT			"Current temperature drop [%.1f K]"		(gRuntime)
-Number	rtFiltDeltaT	"Filtered temperature drop [%.1f K]"	(gRuntime, gSolarTrend)
+Number	rtFiltDeltaT	"Delta T (filt.) [%.1f K]"	(gRuntime, gSolarTrend)
 Number	rtPowerDensity	"Удельная мощность [%.1f W/K]"	(gRuntime)
 
 
