@@ -41,7 +41,8 @@ then
 			filteredValue = tDelta.doubleValue
 		} else {
 			filteredValue = filteredValue + alpha * (tDelta - filteredValue)
-			filteredValue = Math::round(filteredValue * 1000.0) / 1000.0;
+			val int vv = (filteredValue * 1000).intValue
+			filteredValue = vv / 1000.0;
 		}
 		
 		logDebug("solar.rules", "DeltaT after Low Pass filter (a={}) is: {} K", alpha, filteredValue)
