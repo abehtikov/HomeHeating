@@ -22,3 +22,5 @@ postUpdate(LatestDhwReturnTemp, 40)
 postUpdate(pSystemVolume, 6)
 postUpdate(pHeatingCapacity, 4187) // water
 
+postUpdate(DischargeDHWRequest, OFF)
+

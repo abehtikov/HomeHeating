@@ -26,6 +26,8 @@ Switch	HeatingSupportSw	"Heating support"	(gStatus, gRuntime)
 Switch	HolidayModeSw		"Holiday mode"		(gStatus)
 // Weather prediction
 Switch	RainyTomorrow		"Rain showers forecast"	(gWeather)
+Switch	SunnyTomorrow		"Sun and clear tomorrow afternoon"	(gWeather)
+Switch 	DischargeDHWRequest	"Разгрузка бойлера ГВС"	(gStatus)
 // Collector is in shadow
 Switch CollectorInShadow	"Collector in shadow"	(gStatus, gRuntime)
 // Manual or AUTO operating mode

@@ -18,7 +18,7 @@ var double filteredValue = -99 // workaround for null
 val int collectorAzimuthAngle = 234
 
 var boolean pump_on = false
-
+var Timer dhwDischargeTimer = null
 
 /******** Common diff. controller rules   */
 
@@ -40,7 +40,8 @@ then
 		if (filteredValue == -99) {
 			filteredValue = tDelta.doubleValue
 		} else {
-			filteredValue = filteredValue + alpha * (tDelta - filteredValue)
+			filteredValue = (filteredValue + alpha * (tDelta - filteredValue)).doubleValue
+			filteredValue = Math::round(filteredValue * 1000.0) / 1000.0;
 		}
 		
 		logDebug("solar.rules", "DeltaT after Low Pass filter (a={}) is: {} K", alpha, filteredValue)
@@ -57,10 +58,24 @@ rule "Return temperature changed"
 when
 	Item ReturnTemp changed
 then
-	if (SolarPumpSw.state == ON) {
-		val temp = (ReturnTemp.state as DecimalType).doubleValue
+	val temp = (ReturnTemp.state as DecimalType).doubleValue
+	if (SolarPumpSw.state == ON) {	
 		postUpdate(LatestDhwReturnTemp, temp)
+		
+		// over heating protection
+		if (HolidayModeSw.state == ON && SunnyTomorrow.state == ON) {
+			if (temp < 50) {
+				//postUpdate(DischargeDHWRequest, OFF)
+				
+			} else if (temp > 80) {
+				postUpdate(DischargeDHWRequest, ON)
+			}
+		} else if (temp > 90) {
+			// stop charging DHW storage
+		}
 	}
+	
+
 	// TODO распознать ступеньку спустя 2-4 минуты после запуска насоса
 end
 
@@ -74,7 +89,10 @@ then
 	
 	// logInfo("solar", "Execute DeltaT update. Current pump state is: " + SolarPumpSw.state)
 	if (ManualOperation.state == ON) {
+	
+	} else if (CollectorInShadow.state == ON && DischargeDHWRequest == ON) {
 		
+		logDebug("solar", "Discharging DHW Boiler...")	
 	} else {
 		
 		if (SolarPumpSw.state == ON) {
@@ -126,7 +144,7 @@ when
 then
 	// log pump start time
 	pump_on = true
-	postUpdate(PumpStatusON, 65)
+	postUpdate(PumpStatusON, 5)
 	
 	// avoid switching the pump off until the temperatures stabilize
 	// Low pass filter on deltaT implements this use-case (prevents from switching OFF too early)
@@ -155,7 +173,7 @@ then
 		logInfo("solar", "DHW return temperature: {} deg.", tReturn)
 	}
 	
-	postUpdate(PumpStatusON, 20) // 20 == Pump OFF
+	postUpdate(PumpStatusON, 0) // 0 == Pump OFF
 	
 end
 
@@ -201,13 +219,27 @@ end
 
 rule "Collector shadow ON/OFF"
 when 
-	Item CollectorInShadow changed from ON to OFF
+	Item CollectorInShadow changed
 then
 	var azimuth = (SunAzimuth.state as DecimalType).intValue
 	var elevation = (SunElevation.state as DecimalType).doubleValue
 	
-	logInfo("solar", "Collector goes out of shadow."
-		+ " Sun azimuth: {}, altitude: {}", azimuth, elevation)
+	if (previousState == OFF) {
+		logInfo("solar", "Collector goes out of shadow."
+			+ " Sun azimuth: {}, altitude: {}", azimuth, elevation)
+	
+	} else if (previousState == ON) {
+		// check for DHW discharge option
+		if (DischargeDHWRequest.state == ON) {
+			logInfo("solar", "Starting up the pump discharge to DHW storage.")
+			sendCommand(SolarPumpSw, ON)
+			dhwDischargeTimer = createTimer(now.plusMinutes(150), [| // +2.5 h to cool down
+				sendCommand(SolarPumpSw, OFF)
+				postUpdate(DischargeDHWRequest, OFF)
+				logInfo("solar", "Discharge DHW is over. Stop the pump.")
+			])
+		}
+	}
 end
 
 
@@ -236,13 +268,14 @@ then
 	sendHttpGetRequest(url)
 end	
 
+/*
 rule "Startup"
 when
 	System started
 then	
 	callScript("init_solar")
 end
-
+*/
 
 rule "Update power density" // Удельная мощность теплоносителя Ватт/градус К
 when

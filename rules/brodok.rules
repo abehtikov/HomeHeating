@@ -66,10 +66,13 @@ when
 	System started
 then
 	
+	callScript("init_solar")
+	
+	/*
 	postUpdate(TempSensor_Corridor, 20.0)
 	postUpdate(TempSensor_Kitchen, 21.0)
 	postUpdate(TempSensor_Bedroom, 19.0)
-	
+	*/
 	logDebug("brodok.rules", "Set default valve position (open) of the living room loop.")
 	// open living room valve (Normally Open)
 	postUpdate(LivingRoom_PWM_PV, ON)
@@ -689,9 +692,14 @@ rule "Solar pump manual control"
 when
 	Item PumpControl received command
 then
-	if (receivedCommand == "on") {
-		sendCommand(SolarPumpSw, ON)
+	if (ManualOperation.state == ON) {
+		if (receivedCommand == "on") {
+			sendCommand(SolarPumpSw, ON)
+		} else {
+			sendCommand(SolarPumpSw, OFF)
+		}
 	} else {
-		sendCommand(SolarPumpSw, OFF)
+		logWarn("solar", "MQTT solar pump control is allowed in ManualOperation mode!")
 	}
+
 end
