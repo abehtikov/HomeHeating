@@ -40,7 +40,7 @@ then
 		if (filteredValue == -99) {
 			filteredValue = tDelta.doubleValue
 		} else {
-			filteredValue = (filteredValue + alpha * (tDelta - filteredValue)).doubleValue
+			filteredValue = filteredValue + alpha * (tDelta - filteredValue)
 			filteredValue = Math::round(filteredValue * 1000.0) / 1000.0;
 		}
 		

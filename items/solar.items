@@ -71,7 +71,7 @@ Number tnLowPassAlpha "Low pass filter alpha [%.2f]"	(gTuning)	{mqtt="<[cloud-mq
 // Runtime values
 Number	rtCollectorPower	"Estimated collector power	[%d Watt]"	(gRuntime)
 Number	rtDeltaT			"Current temperature drop [%.1f K]"		(gRuntime)
-Number	rtFiltDeltaT	"Delta T (filt.) [%.1f K]"	(gRuntime, gSolarTrend)
+Number	rtFiltDeltaT	"Delta T (filt.) [%.2f K]"	(gRuntime, gSolarTrend)
 Number	rtPowerDensity	"Удельная мощность [%.1f W/K]"	(gRuntime)
 
 

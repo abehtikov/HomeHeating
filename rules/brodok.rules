@@ -22,14 +22,6 @@ var boolean ON_deadband = false
 var boolean OFF_deadband = false
 var boolean event_deadband = false // signals deadband X min before calendar event expires
 
-rule "Schedule events offline"
-when
-	Item Duration_R_40C received update or
-	Item wd_mo_hh changed
-then
-	callScript("HeatingEventScheduler")
-end
-
 
 rule "Calculate current heating power demand"
 when
