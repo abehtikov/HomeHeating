@@ -21,13 +21,13 @@ Switch 	DHW_Request		"DHW request"		(gStatus)
 // During a Heating season it's worth to use collector for underfloor heating
 Switch	HeatingSupportSw	"Heating support"	(gStatus, gRuntime)
 // Trigger collector overheating protection when family is away
-Switch	HolidayModeSw		"Holiday mode"		(gStatus)
+Switch	HolidayModeSw		"Holiday mode"		(gStatus, gTuning)
 // Weather prediction
 Switch	RainyTomorrow		"Rain showers forecast"	(gWeather)
 Switch	SunnyTomorrow		"Sun and clear tomorrow afternoon"	(gWeather)
 Switch 	DischargeDHWRequest	"Запрос на сброс тепла из бойлера ГВС"	(gStatus)
 // Collector is in shadow
-Switch CollectorInShadow	"Collector in shadow"	(gStatus, gRuntime)
+Switch CollectorInShadow	"Collector in shadow"	(gStatus, gRuntime, gSunPosition)
 // Manual or AUTO operating mode
 Switch ManualOperation	"Manual operation"	(gStatus, gRuntime)
 // Solar irradiation sensor on collector's surface
