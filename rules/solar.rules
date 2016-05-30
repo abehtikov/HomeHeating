@@ -289,8 +289,8 @@ then
 		+ "&field2=%2$.2f"
 		+ "&field3=%3$d"
 		+ "&field4=%4$.2f"
-		+ "&field4=%5$.1f"
-		+ "&field4=%6$.1f",
+		+ "&field5=%5$.1f"
+		+ "&field6=%6$.1f",
 		field1, field2, field3, field4, f5, f6, api_key
 	)
 	logDebug("solar", "Update thingspeak channel 61471: " + url)
@@ -373,7 +373,7 @@ when
 then
 	val double value = (tnLowPassAlpha.state as DecimalType).doubleValue
 	
-	if (value > 0.05 && value < 0.3) {
+	if (value >= 0.05 && value =< 0.3) {
 		logInfo("solar", "Low pass filter alpha updated from {} to {}", alpha, value)
 		alpha = value
 	}
