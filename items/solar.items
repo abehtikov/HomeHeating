@@ -45,22 +45,22 @@ Switch SolarPumpSw	"Solar Pump"		(gPump, gRuntime, RelaysGPIO)	{gpio="pin:23 act
 Number PumpStatusON	"Solar pump status"	(gSolarTrend) // 0 - off, 5 - on
 Number PumpOperationAnnualHr	"Annual operating hours [%d h]"		(gPump)
 Number PumpOperationThisMonthHr	"Current month operation [%d h]"	(gPump)
-Number PumpOperationTodayHr		"Today [%d h]"					(gPump, gSolarStat)
-Number TotalPumpOperatingHr		"Total pump operation [%d h]"		(gPump)
+Number PumpOperationTodayHr		"Today [%.1f h]"					(gPump, gSolarStat)
+Number TotalPumpOperatingHr		"Total pump operation [%.1f h]"		(gPump)
 // timestamp when the pump was ON last time
 DateTime	PumpLatestOperation	"Latest operation [%1$tA,  %1$tH:%1$tM]"	(gPump)
 
 // Heating medium
 Number pHeatingCapacity	"Heating Capacity [%.1f J/(kg*K)]"	(gHeatingMedium)
 Number pGlycolPercent	"Glycol content [%.1f %%]"			(gHeatingMedium)
-Number pFlowRate		"Estimated flow [%.1f l/h]"		(gHeatingMedium)
+Number pFlowRate		"Estimated flow [%.1f l/h]"		(gHeatingMedium)	{mqtt="<[cloud-mqtt:brodok/solar/tuning/flowRate:state:default]"}
 Number pSystemVolume	"System volume [%d ltr]"			(gHeatingMedium)
 
 
 // Tuning parameters
-Number	tnDeltaTon	"Delta T on [%d K]"		(gTuning) // 8K (5 - 10K)
-Number	tnDeltaToff	"Delta T off [%d K]"	(gTuning) // 2K
-Number	tnTminHeatingSupport	"Heating support Min Temperature [%d C]"	(gTuning)
+Number	tnDeltaTon	"Delta T on [%.1f °C]"		(gTuning) // 8K (5 - 10K)
+Number	tnDeltaToff	"Delta T off [%.1f °C]"	(gTuning) // 2K
+Number	tnTminHeatingSupport	"Heating support Min Temperature [%d °C]"	(gTuning)
 Number tnLowPassAlpha "Low pass filter alpha [%.2f]"	(gTuning)	{mqtt="<[cloud-mqtt:brodok/solar/tuning/lowPassAlpha:state:default]"}
 
 // Collected Energy from Solar thermal collector
@@ -70,9 +70,9 @@ Number	kwhThisMonth	"This month [%.2f kWh]" (gSolarStat)
 
 // Runtime values
 Number	rtCollectorPower	"Estimated collector power	[%d Watt]"	(gRuntime)
-Number	rtDeltaT			"Current temperature drop [%.1f K]"		(gRuntime)
-Number	rtFiltDeltaT	"Delta T (filt.) [%.2f K]"	(gRuntime, gSolarTrend)
-Number	rtPowerDensity	"Удельная мощность [%.1f W/K]"	(gRuntime)
+Number	rtDeltaT			"Current temperature drop [%.1f °C]"		(gRuntime)
+Number	rtFiltDeltaT	"Delta T (filt.) [%.2f °C]"	(gRuntime, gSolarTrend)
+Number	rtPowerDensity	"Удельная мощность [%.1f W/°C]"	(gRuntime)
 
 // Weather conditions tomorrow
 // clouds
