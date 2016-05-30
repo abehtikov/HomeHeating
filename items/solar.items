@@ -3,12 +3,10 @@
 Group gPump			(gStatus)
 Group gHeatingMedium	(All)
 Group gTuning			
-Group gDHW
+Group gSolarStat
 Group gRuntime
 Group gSolarTrend
-
-// initialize values after in a short delay after System startup.
-//Switch AfterStartup
+Group gSunPosition	(gStatus)
 
 // Temperature sensors
 Number CollectorTemp	"Collector temperature [%.1f °C]"	<temperature>	(gStatus, gRuntime, gSolarTrend)		{mqtt="<[cloud-mqtt:brodok/solar/collector_temp:state:default]"}
@@ -27,7 +25,7 @@ Switch	HolidayModeSw		"Holiday mode"		(gStatus)
 // Weather prediction
 Switch	RainyTomorrow		"Rain showers forecast"	(gWeather)
 Switch	SunnyTomorrow		"Sun and clear tomorrow afternoon"	(gWeather)
-Switch 	DischargeDHWRequest	"Разгрузка бойлера ГВС"	(gStatus)
+Switch 	DischargeDHWRequest	"Запрос на сброс тепла из бойлера ГВС"	(gStatus)
 // Collector is in shadow
 Switch CollectorInShadow	"Collector in shadow"	(gStatus, gRuntime)
 // Manual or AUTO operating mode
@@ -36,19 +34,20 @@ Switch ManualOperation	"Manual operation"	(gStatus, gRuntime)
 Number SolarRadiation	"Radiation on collector [%.1f Volt]"	(gStatus, gRuntime)
 // Sun position
 // azimuth and elevation
-Number   SunAzimuth        "Azimuth [%.0f °]"     {astro="planet=sun, type=position, property=azimuth"}
-Number   SunElevation      "Sun elevation [%.2f °]" (gSolarTrend)  {astro="planet=sun, type=position, property=elevation"}
+Number   SunAzimuth        "Azimuth [%.0f °]"   (gSunPosition)  {astro="planet=sun, type=position, property=azimuth"}
+Number   SunElevation      "Sun elevation [%.1f °]" (gSunPosition)  {astro="planet=sun, type=position, property=elevation"}
+Number	SunbeamAngleToFacade	"Sun beam angle to facade [%.0f °]" (gSunPosition)
 
 
 // Solar Pump 
 Switch SolarPumpSw	"Solar Pump"		(gPump, gRuntime, RelaysGPIO)	{gpio="pin:23 activelow:yes"} // Relay #4
 // solar pump status for chart
-Number PumpStatusON	"Solar pump status"	(gSolarTrend) // 30 - off, 65 - on
+Number PumpStatusON	"Solar pump status"	(gSolarTrend) // 0 - off, 5 - on
 Number PumpOperationAnnualHr	"Annual operating hours [%d h]"		(gPump)
 Number PumpOperationThisMonthHr	"Current month operation [%d h]"	(gPump)
-Number PumpOperationTodayHr		"Today [%d h]"					(gPump)
+Number PumpOperationTodayHr		"Today [%d h]"					(gPump, gSolarStat)
 Number TotalPumpOperatingHr		"Total pump operation [%d h]"		(gPump)
-// timestamp when the pump was on last time
+// timestamp when the pump was ON last time
 DateTime	PumpLatestOperation	"Latest operation [%1$tA,  %1$tH:%1$tM]"	(gPump)
 
 // Heating medium
@@ -62,10 +61,11 @@ Number pSystemVolume	"System volume [%d ltr]"			(gHeatingMedium)
 Number	tnDeltaTon	"Delta T on [%d K]"		(gTuning) // 8K (5 - 10K)
 Number	tnDeltaToff	"Delta T off [%d K]"	(gTuning) // 2K
 Number	tnTminHeatingSupport	"Heating support Min Temperature [%d C]"	(gTuning)
-// ~62 Watt/1 degree delta for 40% glycol @ 1 l/min. flow
-// ~70 W/K	for water @ 1 l/min. flow
-//Number	tnCollectorPowerFactor	"Estimated power @ 1 l/min [%d Watt/delta 1K]"	(gTuning)
 Number tnLowPassAlpha "Low pass filter alpha [%.2f]"	(gTuning)	{mqtt="<[cloud-mqtt:brodok/solar/tuning/lowPassAlpha:state:default]"}
+
+// Collected Energy from Solar thermal collector
+Number	kwhToday	"Today [%.2f kWh]" (gSolarStat)
+Number	kwhThisMonth	"This month [%.2f kWh]" (gSolarStat)
 
 
 // Runtime values
@@ -74,4 +74,10 @@ Number	rtDeltaT			"Current temperature drop [%.1f K]"		(gRuntime)
 Number	rtFiltDeltaT	"Delta T (filt.) [%.2f K]"	(gRuntime, gSolarTrend)
 Number	rtPowerDensity	"Удельная мощность [%.1f W/K]"	(gRuntime)
 
+// Weather conditions tomorrow
+// clouds
+Number   Clouds   "Clouds [%.0f %%]" (gWeather)  {weather="locationId=home, forecast=1, type=clouds, property=percent"}
 
+// condition
+String   Condition        "Condition [%s]"   (gWeather)   {weather="locationId=home, forecast=1, type=condition, property=text"}
+String   Condition_ID     "Condition id [%s]"  (gWeather) {weather="locationId=home, forecast=1, type=condition, property=id"}

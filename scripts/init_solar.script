@@ -5,7 +5,7 @@
 
 logInfo("startup", "initializing solar controller tuning parameters...")
 
-//sendCommand(SolarPumpSw, OFF)
+sendCommand(SolarPumpSw, OFF)
 
 sendCommand(ManualOperation, OFF)
 
@@ -23,4 +23,11 @@ postUpdate(pSystemVolume, 6)
 postUpdate(pHeatingCapacity, 4187) // water
 
 postUpdate(DischargeDHWRequest, OFF)
+postUpdate(HolidayModeSw, OFF)
+
+postUpdate(kwhToday, 0)
+postUpdate(kwhThisMonth, 0)
+postUpdate(PumpOperationTodayHr, 0)
+
+postUpdate(SunnyTomorrow, ON)
 

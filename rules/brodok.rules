@@ -129,6 +129,7 @@ when
 	System started
 then
 	callScript("monthAverage")
+	postUpdate(kwhThisMonth, 0)
 end
 
 
@@ -694,4 +695,12 @@ then
 		logWarn("solar", "MQTT solar pump control is allowed in ManualOperation mode!")
 	}
 
+end
+
+// update openhab last will topic when MQTT is up
+rule "MQTT is UP"
+when
+	Item nhMqtt changed to ON
+then
+	postUpdate(nhMqttLwtStatus, "CONNECTED")
 end

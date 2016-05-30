@@ -45,7 +45,8 @@ String Location_Sveta_Phone (gPresense) {mqtt="<[cloud-mqtt:owntracks/sveta:stat
 
 /* Network health status */
 Group:Switch:OR(ON, OFF) gNetworkHealth "Network health [%d / 3]" (gStatus)
-Switch nhMqtt 		"cloudmqtt.com [%s]"		(gNetworkHealth) { nh="m20.cloudmqtt.com:10350" }
+Switch nhMqtt 		"cloudmqtt.com [%s]"		(gNetworkHealth) { nh="m20.cloudmqtt.com:10350", mqtt=">[cloud-mqtt:brodok/openhab/lwt:state:ON:CONNECTED]" }
+String nhMqttLwtStatus	"MQTT status [%s]"		(gNetworkHealth) { mqtt=">[cloud-mqtt:brodok/openhab/lwt:state:ON:CONNECTED]" }
 Switch nhCalendar	"calendar.google.com [%s]"	(gNetworkHealth) { nh="googleapis.com:443" }
 Switch nhForecastIo "api.forecast.io [%s]"		(gNetworkHealth) { nh="api.forecast.io" }
 

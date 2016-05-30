@@ -19,6 +19,7 @@ val int collectorAzimuthAngle = 234
 
 var boolean pump_on = false
 var Timer dhwDischargeTimer = null
+var Timer solarManualOperationTimer = null
 
 /******** Common diff. controller rules   */
 
@@ -71,13 +72,12 @@ then
 			} else if (temp > 80) {
 				postUpdate(DischargeDHWRequest, ON)
 			}
-		} else if (temp > 90) {
+		}  
+		
+		if (temp > 90) {
 			// stop charging DHW storage
 		}
 	}
-	
-
-	// TODO распознать ступеньку спустя 2-4 минуты после запуска насоса
 end
 
 rule "Low pass Delta T update"
@@ -98,6 +98,9 @@ then
 		
 		if (SolarPumpSw.state == ON) {
 			
+			var powerFactor = (rtPowerDensity.state as DecimalType).doubleValue
+			var power = deltaT * powerFactor
+			
 			var tMinDrop = (tnDeltaToff.state as DecimalType).doubleValue
 			if (deltaT < tMinDrop) {
 				logInfo("solar", "delta T:{} C, delta T OFF: {} C --> switching solar pump OFF.", deltaT, tMinDrop)
@@ -105,11 +108,14 @@ then
 				postUpdate(rtCollectorPower, 0)
 				
 			} else {
-				var powerFactor = (rtPowerDensity.state as DecimalType).doubleValue
-				var power = deltaT * powerFactor
 				// update estimated collector power
 				postUpdate(rtCollectorPower, power.intValue)
 			}
+			
+			//assume that exactly 1 minute has passed since the previous calculation
+			var inc_kwh = (power / 1000.0) / 60.0
+			var prev = (kwhToday.state as DecimalType).doubleValue
+			postUpdate(kwhToday, prev + inc_kwh) 
 			
 		// Pump is OFF	
 		} else if ((HeatingSupportSw.state == OFF) && (DHW_Request.state == ON)) { // check the mode
@@ -141,7 +147,7 @@ end
 
 rule "Solar Pump switches ON"
 when 
-	Item SolarPumpSw changed from OFF to ON
+	Item SolarPumpSw changed to ON
 then
 	// log pump start time
 	pump_on = true
@@ -190,8 +196,24 @@ then
 			val inc = 0.05 // 3 minutes = 0.05 hour
 			var lastValue = (TotalPumpOperatingHr.state as DecimalType).doubleValue
 			postUpdate(TotalPumpOperatingHr, lastValue + inc)
+			
+			lastValue = (PumpOperationTodayHr.state as DecimalType).doubleValue
+			postUpdate(PumpOperationTodayHr, lastValue + inc)
 		}
 	}
+end
+
+rule "Reset daily meters"
+when 
+	Time is midnight
+then
+	var lastDay_kwh = (kwhToday.state as DecimalType).doubleValue
+	postUpdate(kwhToday, 0)
+	
+	var month_kwh = (kwhThisMonth.state as DecimalType).doubleValue
+	postUpdate(kwhThisMonth, month_kwh + lastDay_kwh)
+	
+	postUpdate(PumpOperationTodayHr, 0)
 end
 
 rule "Sun position update"
@@ -204,15 +226,14 @@ then
 	val minAngle = collectorAzimuthAngle - 90
 	val maxAngle = collectorAzimuthAngle + 90
 	
-	logInfo("solar", "Sun azimuth: {} deg", azimuth)
-	
-	
 	if (elevation < 0) {
 		postUpdate(CollectorInShadow, ON)
 	}
 	// horizontal shadow criteria
 	else if (azimuth > minAngle && azimuth < maxAngle) {
 		postUpdate(CollectorInShadow, OFF)
+		var int angleDiff = Math::abs(azimuth - collectorAzimuthAngle)
+		postUpdate(SunbeamAngleToFacade, 90 - angleDiff)
 	} else {
 		postUpdate(CollectorInShadow, ON)
 	}
@@ -225,14 +246,14 @@ then
 	var azimuth = (SunAzimuth.state as DecimalType).intValue
 	var elevation = (SunElevation.state as DecimalType).doubleValue
 	
-	if (previousState == OFF) {
+	if (previousState == ON) {
 		logInfo("solar", "Collector goes out of shadow."
 			+ " Sun azimuth: {}, altitude: {}", azimuth, elevation)
 	
-	} else if (previousState == ON) {
+	} else if (previousState == OFF) {
 		// check for DHW discharge option
 		if (DischargeDHWRequest.state == ON) {
-			logInfo("solar", "Starting up the pump discharge to DHW storage.")
+			logInfo("solar", "Starting up the pump to discharge DHW storage.")
 			sendCommand(SolarPumpSw, ON)
 			dhwDischargeTimer = createTimer(now.plusMinutes(150), [| // +2.5 h to cool down
 				sendCommand(SolarPumpSw, OFF)
@@ -240,6 +261,8 @@ then
 				logInfo("solar", "Discharge DHW is over. Stop the pump.")
 			])
 		}
+		
+		postUpdate(SunbeamAngleToFacade, -1.0)
 	}
 end
 
@@ -255,15 +278,20 @@ then
 	var field3 = 0
 	if (SolarPumpSw.state == ON) { field3 = 1 }
 	val field4 = (rtFiltDeltaT.state as DecimalType).doubleValue
+	// flowRate
+	val f5 = (pFlowRate.state as DecimalType).doubleValue
+	val f6 = (LatestDhwReturnTemp.state as DecimalType).doubleValue
 	
 	val api_key = "4ZYKQYVC6E4WYELM"
 	var url = String::format("https://api.thingspeak.com/update?"
-		+ "api_key=%5$s"
+		+ "api_key=%7$s"
 		+ "&field1=%1$.2f"
 		+ "&field2=%2$.2f"
 		+ "&field3=%3$d"
-		+ "&field4=%4$.2f",
-		field1, field2, field3, field4, api_key
+		+ "&field4=%4$.2f"
+		+ "&field4=%5$.1f"
+		+ "&field4=%6$.1f",
+		field1, field2, field3, field4, f5, f6, api_key
 	)
 	logDebug("solar", "Update thingspeak channel 61471: " + url)
 	sendHttpGetRequest(url)
@@ -283,21 +311,61 @@ when
 	Item pHeatingCapacity received update or
 	Item pFlowRate received update
 then
-	var double value = 60.0 //by default
+	var double value = 60.0 //by default 60 W/deg C
+	
 	if (pHeatingCapacity.state instanceof DecimalType &&
 		pFlowRate.state instanceof DecimalType) {
 		
 		val capacity = (pHeatingCapacity.state as DecimalType).doubleValue
 		val flowRate = (pFlowRate.state as DecimalType).doubleValue
 		
-		value = (capacity * flowRate / 3600.0).doubleValue
-		
-		logInfo("solar", "Power density: {} W/deg C, Flow rate: {} l/h", value, flowRate)
+		if (capacity > 3500.0 && capacity < 4200.0) {
+			value = (capacity * flowRate / 3600.0).doubleValue
+			logInfo("solar", "Power density: {} W/deg C, Flow rate: {} l/h", value, flowRate)
+		} else {
+			logWarn("solar", "Invalid heating capacity value: {}", capacity)
+		}
 	}
 	
 	postUpdate(rtPowerDensity, value)
 end
 
+/*
+ * Если не в отпуске
+ * и (а) коллектор находится в тени или
+ * (б) нет солнца (пасмурно)
+ * 
+ * Само-остывание бойлера 1 кВт-ч/сутки + 6 кВт-ч/сутки потребление
+ * итого: градиент падения температуры: 2.1 градуса/час 
+ * без водоразбора: 0.6 градуса/час
+ * 
+ * Бойлер 120 лтр
+ */
+rule "DHW Storage self discharge" // 
+when
+	Time cron "0 */20 * * * ?" // every 20 min
+then
+	val oldValue = (LatestDhwReturnTemp.state as DecimalType).doubleValue
+	var double dhwTempDrop
+	
+	// Коллектор в тени и насос выключен
+	if (CollectorInShadow.state == ON && SolarPumpSw.state == OFF) {
+		
+		if (HolidayModeSw.state == OFF) { // в обычное время
+			dhwTempDrop = 0.7 // 2.1 deg/h
+		} else { // нет водоразбора (в отпуске)
+			dhwTempDrop = 0.2 // 0.6 deg/h
+		}
+		// T бойлера не может упасть ниже 10 градусов (зимой - ниже 5)
+		if (oldValue > 12.0) {
+			
+			logInfo("solar", "DHW self-discharge. temperature drop from {} down by {} C.",
+				oldValue, dhwTempDrop
+			)
+			postUpdate(LatestDhwReturnTemp, oldValue - dhwTempDrop)		
+		}
+	}
+end
 
 rule "Update Low Pass Filter"
 when
@@ -305,8 +373,37 @@ when
 then
 	val double value = (tnLowPassAlpha.state as DecimalType).doubleValue
 	
-	if (value > 0.05 && value < 0.25) {
+	if (value > 0.05 && value < 0.3) {
 		logInfo("solar", "Low pass filter alpha updated from {} to {}", alpha, value)
 		alpha = value
 	}
 end
+
+rule "SolarPump control manual"
+when 
+	Item ManualOperation changed from OFF to ON
+then
+	if (solarManualOperationTimer != null) {
+		solarManualOperationTimer.cancel()
+		solarManualOperationTimer = null
+	}
+	// 15 min * 1100 W = 275 Wh = 237 kCall (2.37 kg water * 100 deltaT)
+	// we can easily boil water inside the collector if we stop the pump for 15 min. 
+	solarManualOperationTimer = createTimer(now.plusMinutes(15), [|
+		sendCommand(ManualOperation, OFF)
+	])
+end	
+
+rule "Weather forecast next day"
+when 
+	Item Clouds received update
+then
+	var cloudsPercent = (Clouds.state as DecimalType).intValue
+	
+	if (cloudsPercent > 60) {
+		postUpdate(SunnyTomorrow, OFF)
+	} else {
+		postUpdate(SunnyTomorrow, ON)
+	}
+end
+
