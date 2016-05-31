@@ -20,6 +20,7 @@ sitemap solar label="Solar DHW"
 			Frame label="Misc." {
 				Switch item=ManualOperation
 				Switch item=HolidayModeSw
+				Switch item=DischargeDHWRequest
 			}
 		}
 	}
