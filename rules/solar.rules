@@ -314,7 +314,7 @@ then
 		field1, field2, field3, field4, f5, f6, api_key
 	)
 	logDebug("solar", "Update thingspeak channel 61471: " + url)
-	//sendHttpGetRequest(url)
+	sendHttpGetRequest(url)
 end	
 
 
