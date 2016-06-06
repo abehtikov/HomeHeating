@@ -16,6 +16,7 @@ var double alpha = 0.15 // low pass filter tuning param
 var double filteredValue = -99 // workaround for null
 
 val int collectorAzimuthAngle = 234
+val int dischargeRequestTresholdTemp = 70
 
 var boolean pump_on = false
 var Timer dhwDischargeTimer = null
@@ -35,7 +36,13 @@ then
 		var tReturn = (ReturnTemp.state as DecimalType).doubleValue
 	
 		var tDelta = tColl - tReturn
-	
+		
+		// ignore return T when solar pump is OFF
+		if (SolarPumpSw.state == OFF) { 
+			val lastDhwTemp = (LatestDhwReturnTemp.state as DecimalType).doubleValue
+			tDelta = tColl - lastDhwTemp
+		}
+		
 		logDebug("solar", "Temperature drop is: {} K", tDelta)
 	
 		if (filteredValue == -99) {
@@ -69,13 +76,13 @@ then
 			if (temp < 50) {
 				//postUpdate(DischargeDHWRequest, OFF)
 				
-			} else if (temp > 80) {
+			} else if (temp > dischargeRequestTresholdTemp) {
 				postUpdate(DischargeDHWRequest, ON)
 			}
 		}  
 		
-		if (temp > 90) {
-			// stop charging DHW storage
+		if (temp > 85) {
+			// stop charging DHW storage to avoid damage
 		}
 	}
 end
@@ -122,14 +129,14 @@ then
 			
 			var latestDhwReturnTemp = (LatestDhwReturnTemp.state as DecimalType).doubleValue
 			
-			logDebug("solar", "coll: {} C, latest retrun: {} C, delta ON: {} C", 
-				tColl, latestDhwReturnTemp, deltaMax.intValue
-			)
 			// Enable solar DHW
 			var tDiff = tColl - latestDhwReturnTemp
 			if (tDiff > deltaMax) {
-				logInfo("solar", "T-diff between Collector & latest DHW return T: {} K."
-					+ " --> Switching solar pump ON.", tDiff)
+				
+				logInfo("solar", "T collector: {} C, T return: {} C, deltaT ON: {} C.", 
+					tColl, latestDhwReturnTemp, deltaMax.intValue
+				)
+				logInfo("solar", "T-diff: {} K --> Switching solar pump ON.", tDiff)
 				sendCommand(SolarPumpSw, ON)
 			}
 		// Heating support
@@ -266,6 +273,19 @@ then
 	}
 end
 
+rule "Fire discharge Request"
+when 
+	Item DischargeDHWRequest changed from OFF to ON
+then
+	val temp = (LatestDhwReturnTemp.state as DecimalType).doubleValue
+	logInfo("solar", "High return temperature observed: {} C. Request DHW boiler discharge.", temp)
+	
+	// wait until collector is in shadow to start discharge process	
+	if (dhwDischargeTimer != null) {
+		dhwDischargeTimer.cancel()
+		dhwDischargeTimer = null
+	}
+end
 
 /*  End of Common diff. controller rules */
 
@@ -294,17 +314,9 @@ then
 		field1, field2, field3, field4, f5, f6, api_key
 	)
 	logDebug("solar", "Update thingspeak channel 61471: " + url)
-	sendHttpGetRequest(url)
+	//sendHttpGetRequest(url)
 end	
 
-/*
-rule "Startup"
-when
-	System started
-then	
-	callScript("init_solar")
-end
-*/
 
 rule "Update power density" // Удельная мощность теплоносителя Ватт/градус К
 when
@@ -344,24 +356,26 @@ when
 	Time cron "0 */20 * * * ?" // every 20 min
 then
 	val oldValue = (LatestDhwReturnTemp.state as DecimalType).doubleValue
-	var double k
+	var int k = 30 // 0.03 в обычное время
 	val double minTemp = 18.0
 	
 	// Коллектор в тени и насос выключен
 	if (CollectorInShadow.state == ON && SolarPumpSw.state == OFF) {
 		
 		val delta = oldValue - minTemp
-		if (HolidayModeSw.state == OFF) { // в обычное время
-			k = 0.04
-		} else { // нет водоразбора (в отпуске)
-			k = 0.01
-		}
+		if (HolidayModeSw.state == ON) { 
+			k = 7 // 0.007 - нет водоразбора (в отпуске) = 0.021 * delta / per hour
+		} 
+		
 		if (oldValue > 20.0) {
+			
+			val int vv = (k * delta).intValue
+			val double drop = vv / 1000.0
 			// T бойлера не может упасть ниже 10 градусов (зимой - ниже 5)
-			logInfo("solar", "DHW storage T {} down by {} C. Holiday mode: {}",
-				oldValue, k * delta, HolidayModeSw.state
+			logDebug("solar", "DHW storage T {} down by {} C. Holiday mode: {}",
+				oldValue, drop, HolidayModeSw.state
 			)
-			postUpdate(LatestDhwReturnTemp, oldValue - (k * delta))		
+			postUpdate(LatestDhwReturnTemp, oldValue - drop)		
 		}
 	}
 end
