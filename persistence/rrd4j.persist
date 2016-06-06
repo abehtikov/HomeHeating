@@ -9,7 +9,7 @@ Strategies {
 Items {
 	//DemoSwitch,NoOfLights,Window_GF_Toilet,Heating* : strategy = everyChange, everyMinute, restoreOnStartup
 	gHeatingParams* : strategy = everyChange, everyDay, restoreOnStartup
-	gBoiler*, ThermoValve*, gMovingAverage*, gWarmFloorComfortHours*	: strategy = everyChange, restoreOnStartup
+	gBoiler*, ThermoValve*, gMovingAverage*, gWarmFloorComfortHours*, gSolarStat* : strategy = everyChange, restoreOnStartup
 	
 	// Ambient temperature persistence
 	Temperature : strategy = everyChange, everyHour, restoreOnStartup
