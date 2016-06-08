@@ -6,6 +6,7 @@
 
 var month = now.getMonthOfYear
 var temp = 5.8 // year average
+var dhwDailyDemand = 8.0 // kWh per day
 
 if (month == 1) {
 	temp = -6.9
@@ -35,3 +36,5 @@ if (month == 1) {
 
 postUpdate(MonthAverageTemp, temp)
 logDebug("month.average.temp", "Avg temperature for month {} is: {}", month, temp)
+
+postUpdate(DhwDailyDemand, dhwDailyDemand)

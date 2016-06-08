@@ -6,7 +6,7 @@ import org.joda.time.*
 import java.lang.Math
 import org.joda.time.Minutes
 
-var double alpha = 0.15 // low pass filter tuning param
+var double alpha = 0.25 // low pass filter tuning param
 // RC = sampling_period * (1 - alpha) / alpha
 // RC - time constant
 // when alpha = 0.5, time constant is equal to the sampling_period
@@ -21,6 +21,11 @@ val int dischargeRequestTresholdTemp = 70
 var boolean pump_on = false
 var Timer dhwDischargeTimer = null
 var Timer solarManualOperationTimer = null
+var Timer iceProtectTimer = null
+
+// discharged kWh counter
+var double dischargeKWH = 0
+var double dischargeKwhMax
 
 /******** Common diff. controller rules   */
 
@@ -94,14 +99,34 @@ then
 	var deltaT = (rtFiltDeltaT.state as DecimalType).doubleValue
 	var tColl = (CollectorTemp.state as DecimalType).doubleValue
 	var deltaMax = (tnDeltaTon.state as DecimalType).doubleValue
+	val appState = rtControllerStatus.state
 	
 	// logInfo("solar", "Execute DeltaT update. Current pump state is: " + SolarPumpSw.state)
 	if (ManualOperation.state == ON) {
-	
-	} else if (CollectorInShadow.state == ON && DischargeDHWRequest == ON) {
 		
-		logDebug("solar", "Discharging DHW Boiler...")	
-	} else {
+	} else if (appState == "FRP") {
+		logDebug("solar", "ICE protection of collector is enabled.")
+	
+	//} else if (CollectorInShadow.state == ON && DischargeDHWRequest == ON) {	
+	} else if (appState == "DIS") {
+		
+		var powerFactor = (rtPowerDensity.state as DecimalType).doubleValue
+		var power = deltaT * powerFactor
+		var delta_kwh = (power / 1000.0) / 60.0
+		
+		dischargeKWH = (dischargeKWH - delta_kwh).doubleValue
+		logDebug("solar", "Discharging DHW Boiler... {} kWh", dischargeKWH)
+		dischargeKwhMax = (tnDischargeKwhMin.state as DecimalType).doubleValue
+		
+		if (dischargeKWH > dischargeKwhMax) {
+			if (dhwDischargeTimer != null) { //disable timer in case we discharge faster than 2.5 h
+				dhwDischargeTimer.cancel()
+			}
+			sendCommand(rtControllerStatus, "IDLE")
+		}
+	} else if (appState == "OVP") {
+		
+	} else { // appState == IDLE || appState == CH
 		
 		if (SolarPumpSw.state == ON) {
 			
@@ -112,6 +137,7 @@ then
 			if (deltaT < tMinDrop) {
 				logInfo("solar", "delta T:{} C, delta T OFF: {} C --> switching solar pump OFF.", deltaT, tMinDrop)
 				sendCommand(SolarPumpSw, OFF)
+				sendCommand(rtControllerStatus, "IDLE")
 				postUpdate(rtCollectorPower, 0)
 				
 			} else {
@@ -138,6 +164,7 @@ then
 				)
 				logInfo("solar", "T-diff: {} K --> Switching solar pump ON.", tDiff)
 				sendCommand(SolarPumpSw, ON)
+				sendCommand(rtControllerStatus, "CH")
 			}
 		// Heating support
 		} else if (HeatingSupportSw.state == ON) {
@@ -146,6 +173,7 @@ then
 			if (tColl > tMinUnderfloor + deltaMax) {
 				logInfo("solar", "Switching solar pump to support underfloor heating. T coll: {} C", tColl)
 				sendCommand(SolarPumpSw, ON)
+				sendCommand(rtControllerStatus, "CH")
 			}
 		}
 	}
@@ -223,6 +251,22 @@ then
 	postUpdate(PumpOperationTodayHr, 0)
 end
 
+rule "DHW charge percent"
+when
+	Item kwhToday received update
+then
+	val amount = (kwhToday.state as DecimalType).doubleValue
+	val demand = (DhwDailyDemand.state as DecimalType).doubleValue
+	
+	if (amount > 0) {
+		var int percent = (100 * amount / demand).intValue
+		postUpdate(DhwChargeToday, percent)
+	} else {
+		postUpdate(DhwChargeToday, 0)
+	}
+end
+
+
 rule "Sun position update"
 when
 	Item SunAzimuth received update
@@ -261,11 +305,20 @@ then
 		// check for DHW discharge option
 		if (DischargeDHWRequest.state == ON) {
 			logInfo("solar", "Starting up the pump to discharge DHW storage.")
+			sendCommand(rtControllerStatus, "DIS")
 			sendCommand(SolarPumpSw, ON)
-			dhwDischargeTimer = createTimer(now.plusMinutes(150), [| // +2.5 h to cool down
+			// get config parameter of discharge duration
+			val duration = (tnDischargeHrMin.state as DecimalType).doubleValue
+			var int minutes = (duration * 60).intValue
+			if (minutes < 1) {minutes = 5}
+			dhwDischargeTimer = createTimer(now.plusMinutes(minutes), [| // +2.5 h to cool down
+			/* 
 				sendCommand(SolarPumpSw, OFF)
+				sendCommand(rtControllerStatus, "IDLE")
 				postUpdate(DischargeDHWRequest, OFF)
 				logInfo("solar", "Discharge DHW is over. Stop the pump.")
+			*/
+				sendCommand(rtControllerStatus, "IDLE")
 			])
 		}
 		
@@ -279,12 +332,6 @@ when
 then
 	val temp = (LatestDhwReturnTemp.state as DecimalType).doubleValue
 	logInfo("solar", "High return temperature observed: {} C. Request DHW boiler discharge.", temp)
-	
-	// wait until collector is in shadow to start discharge process	
-	if (dhwDischargeTimer != null) {
-		dhwDischargeTimer.cancel()
-		dhwDischargeTimer = null
-	}
 end
 
 /*  End of Common diff. controller rules */
@@ -360,7 +407,7 @@ then
 	val double minTemp = 18.0
 	
 	// Коллектор в тени и насос выключен
-	if (CollectorInShadow.state == ON && SolarPumpSw.state == OFF) {
+	if (/*CollectorInShadow.state == ON &&*/ SolarPumpSw.state == OFF) {
 		
 		val delta = oldValue - minTemp
 		if (HolidayModeSw.state == ON) { 
@@ -407,6 +454,7 @@ then
 	])
 end	
 
+/*
 rule "Weather forecast next day"
 when 
 	Item Clouds received update or
@@ -421,5 +469,98 @@ then
 	} else {
 		postUpdate(SunnyTomorrow, ON)
 	}
+end
+*/
+
+rule "OpenWeatherMap conditions tomorrow"
+when 
+	Item Condition_ID received update
+then
+	// rule is valid for OWM provider only! 
+	val owm_id = (Condition_ID.state as DecimalType)
+	if (owm_id == 800 ||
+		owm_id == 801 ||
+		owm_id == 802 ||
+		owm_id == 904
+	) {
+		postUpdate(SunnyTomorrow, ON)
+	} else {
+		postUpdate(SunnyTomorrow, OFF)
+	}
+end
+
+
+rule "Check collector T"
+when
+	Time cron "35 */10 * * * ?" // check every 10 minutes
+then
+	val tColl = (CollectorTemp.state as DecimalType).doubleValue
+	val tReturn = (ReturnTemp.state as DecimalType).doubleValue
+	val appState = rtControllerStatus.state
+	
+	if (tnIceProtectionEnabled.state == ON && SolarPumpSw.state == OFF) {
+		
+		var tempSP = (tnIceProtectionTMin.state as DecimalType).doubleValue
+		if (tempSP < 1) {tempSP = 2.0}
+		
+		if (tColl < tempSP) {
+			sendCommand(rtControllerStatus, "FRP")
+			logInfo("solar", "Collector temperature: {} C. ICE protection activated.", tColl)
+			sendCommand(SolarPumpSw, ON)
+			
+			val systemVolume = (pSystemVolume.state as DecimalType).doubleValue
+			val flowRate = (pFlowRate.state as DecimalType).doubleValue
+			
+			var min = (30.0 * systemVolume / flowRate).intValue
+			if (min < 4) { min = 4 }
+			iceProtectTimer = createTimer(now.plusMinutes(min), [|
+				sendCommand(SolarPumpSw, OFF)
+				sendCommand(rtControllerStatus, "IDLE")
+			])
+		}
+	}
+	
+	val tMax = (tnOverheatingTmax.state as DecimalType).doubleValue
+	val tMin = (tnOverheatingTmin.state as DecimalType).doubleValue
+	
+	if (appState == "CH" && tReturn > tMax) {
+		// DHW storage overheating protection
+		sendCommand(rtControllerStatus, "OVP")
+		sendCommand(SolarPumpSw, OFF)
+	}
+	
+	if (appState == "OVP" && tColl < tMin) {
+		sendCommand(rtControllerStatus, "IDLE")
+	}
+end
+
+
+rule "Controller state changed"
+when
+	Item rtControllerStatus changed
+then
+	var appState = rtControllerStatus.state
+	logInfo("solar", "Controller status CHANGED from {} to {}", 
+		previousState, appState
+	)
+	
+	if (previousState == "DIS" && appState == "IDLE") {
+		logInfo("solar", "Discharge DHW finished event handled here.")
+	}
+end
+
+
+rule "Discharge DHW is finished"
+when
+	Item rtControllerStatus changed from DIS to IDLE
+then
+	sendCommand(DischargeDHWRequest, OFF)
+	
+	val int vv = (dischargeKWH * 100).intValue
+	logInfo("solar", "DHW discharged: {} kWh. Stop the pump.", vv / 100.0)
+	
+	sendCommand(SolarPumpSw, OFF)
+	dischargeKWH = 0
+	dhwDischargeTimer = null
 end
 

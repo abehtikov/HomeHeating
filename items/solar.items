@@ -24,7 +24,7 @@ Switch	HeatingSupportSw	"Heating support"	(gStatus, gRuntime)
 Switch	HolidayModeSw		"Holiday mode"		(gStatus, gTuning)
 // Weather prediction
 Switch	RainyTomorrow		"Rain showers forecast"	(gWeather)
-Switch	SunnyTomorrow		"Sun and clear tomorrow afternoon"	(gWeather)
+Switch	SunnyTomorrow		"Sunny afternoon tomorrow [%s]"	(gWeather)
 Switch 	DischargeDHWRequest	"Запрос на сброс тепла из бойлера ГВС"	(gStatus)
 // Collector is in shadow
 Switch CollectorInShadow	"Collector in shadow"	(gStatus, gRuntime, gSunPosition)
@@ -46,7 +46,7 @@ Number PumpStatusON	"Solar pump status"	(gSolarTrend) // 0 - off, 5 - on
 Number PumpOperationAnnualHr	"Annual operating hours [%d h]"		(gPump)
 Number PumpOperationThisMonthHr	"Current month operation [%d h]"	(gPump)
 Number PumpOperationTodayHr		"Today [%.1f h]"					(gPump, gSolarStat)
-Number TotalPumpOperatingHr		"Total pump operation [%.1f h]"		(gPump)
+Number TotalPumpOperatingHr		"Total pump operation [%.1f h]"		(gPump, gSolarStat)
 // timestamp when the pump was ON last time
 DateTime	PumpLatestOperation	"Latest operation [%1$tA,  %1$tH:%1$tM]"	(gPump)
 
@@ -63,9 +63,23 @@ Number	tnDeltaToff	"Delta T off [%.1f °C]"	(gTuning) // 2K
 Number	tnTminHeatingSupport	"Heating support Min Temperature [%d °C]"	(gTuning)
 Number tnLowPassAlpha "Low pass filter alpha [%.2f]"	(gTuning)	{mqtt="<[cloud-mqtt:brodok/solar/tuning/lowPassAlpha:state:default]"}
 
+// DHW storage protection
+Number tnDischargeKwhMin "Min. discharge SP [%.1f kWh]"	(gTuning)
+Number tnDischargeHrMin	"Min. duration [%.1f h]"	(gTuning)
+// Overheating protection
+Number tnOverheatingTmax	"Max.T return [%.0f °C]" (gTuning)
+Number tnOverheatingTmin	"Min.T Collector [%.0f °C]" (gTuning)
+
+// ICE protection
+Number tnIceProtectionTMin	"Min. T [%.1f °C]"	(gTuning)
+Switch tnIceProtectionEnabled	"Enable ice protection" (gTuning)
+
 // Collected Energy from Solar thermal collector
 Number	kwhToday	"Today [%.2f kWh]" (gSolarStat)
 Number	kwhThisMonth	"This month [%.2f kWh]" (gSolarStat)
+Number	DhwChargeToday	"DHW solar supply today [%d %%]"	(gSolarStat)
+// Demand is defferent each month. winter: 10 kwh/24h, summer: 6.5 kwh/24h
+Number	DhwDailyDemand	"DHW daily demand [%.1f kWh]"	(gStatus) 
 
 
 // Runtime values
@@ -73,6 +87,7 @@ Number	rtCollectorPower	"Estimated collector power	[%d Watt]"	(gRuntime)
 Number	rtDeltaT			"Current temperature drop [%.1f °C]"		(gRuntime)
 Number	rtFiltDeltaT	"Delta T (filt.) [%.2f °C]"	(gRuntime, gSolarTrend)
 Number	rtPowerDensity	"Удельная мощность [%.1f W/°C]"	(gRuntime)
+String	rtControllerStatus	"Controller state [%s]"	(gRuntime)
 
 // Weather conditions tomorrow
 // clouds

@@ -9,11 +9,13 @@ sendCommand(SolarPumpSw, OFF)
 
 sendCommand(ManualOperation, OFF)
 
-postUpdate(tnDeltaTon, 8)
-postUpdate(tnDeltaToff, 3)
+sendCommand(rtControllerStatus, "IDLE")
+
+postUpdate(tnDeltaTon, 10)
+postUpdate(tnDeltaToff, 2.5)
 //postUpdate(tnCollectorPowerFactor, 62)
 postUpdate(tnTminHeatingSupport, 22)
-postUpdate(pFlowRate, 56)
+postUpdate(pFlowRate, 52.7)
 
 postUpdate(DHW_Request, ON)
 postUpdate(HeatingSupportSw, OFF)
@@ -30,4 +32,14 @@ postUpdate(kwhThisMonth, 0)
 postUpdate(PumpOperationTodayHr, 0)
 
 postUpdate(SunnyTomorrow, ON)
+// discharge options
+postUpdate(tnDischargeKwhMin, 2.0)
+postUpdate(tnDischargeHrMin, 2.5)
 
+//frost protection
+postUpdate(tnIceProtectionTMin, 2.0)
+postUpdate(tnIceProtectionEnabled, ON)
+
+//Overheating protection
+postUpdate(tnOverheatingTmax, 85)
+postUpdate(tnOverheatingTmin, 60)
