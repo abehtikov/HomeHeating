@@ -208,6 +208,7 @@ end
 rule "Check OWM forecast"
 when 
 	Time cron "55 2 6 * * ?" // 6:02:55 am every day
+	or Item pSolarFluidType changed
 	//or Item AfterStartup changed to ON
 then
 	val fmt = "http://api.openweathermap.org/data/2.5/forecast/city?id=%1$s&APPID=%2$s&mode=xml&cnt=8"

@@ -14,7 +14,7 @@ Number CollectorTemp	"Collector [%.1f °C]"	<temperature>	(gStatus, gRuntime, gS
 Number ReturnTemp		"Return	[%.1f °C]"		<temperature>	(gStatus, gRuntime, gSolarTrend)		{mqtt="<[cloud-mqtt:brodok/solar/return_temp:state:default]"}
 //Number OutsideTemp		"Ambient temperature [%.1f °C]"		<temperature>	(gStatus, gWeather)		{weather="locationId=home, type=temperature, property=current"}
 // Remember latest return temperature when solar pump was on @see PumpLastOperation
-Number	LatestDhwReturnTemp	"DHW [%.1f °C]"	<temperature>	(gStatus)	{mqtt="<[cloud-mqtt:brodok/solar/temp/dhw:state:default]"}
+Number	LatestDhwReturnTemp	"DHW Temperature [%.1f °C]"	<temperature>	(gStatus)	{mqtt="<[cloud-mqtt:brodok/solar/temp/dhw:state:default]"}
 
 // Other Inputs
 Switch 	DHW_Request		"DHW request"		(gStatus) // not in use
@@ -75,12 +75,12 @@ Number tnLowPassAlpha "Low pass filter alpha [%.2f]"	(gTuning)	{mqtt="<[cloud-mq
 Number tnDischargeKwhMin "Min. discharge SP [%.1f kWh]"	(gTuning)
 Number tnDischargeHrMin	"Min. duration [%.1f h]"	(gTuning)
 // Overheating protection
-Number tnOverheatingTmax	"Max.T return [%.0f °C]" (gTuning)
-Number tnOverheatingTmin	"Min.T Collector [%.0f °C]" (gTuning)
+Number tnOverheatingTmax	"Max. T Return [%.0f °C]" (gTuning)
+Number tnOverheatingTmin	"Min. T Collector [%.0f °C]" (gTuning)
 
 // ICE protection
 Number tnIceProtectionTMin	"Min. T [%.1f °C]"	(gTuning)
-Switch tnIceProtectionEnabled	"Enable ice protection" (gTuning)
+Switch tnIceProtectionEnabled	"Enable protection" (gTuning)
 
 // Collected Energy from Solar thermal collector
 Number	kwhToday	"Today [%.2f kWh]" (gSolarStat)
