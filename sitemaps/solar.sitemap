@@ -34,7 +34,12 @@ sitemap solar label="Solar DHW"
 	}
 	
 	Frame label="Thermal system parameters" {
-		Group item=gHeatingMedium label="Solar fluid"
+		Group item=gHeatingMedium label="Solar fluid" {
+			Text item=pHeatingCapacity
+			Text item=pFlowRate
+			Text item=pGlycolPercent visibility=[pSolarFluidType==1]
+			Switch item=pSolarFluidType label="Water or Glycol" mappings=[0="Water", 1="Glycol"]
+		}
 	}
 
 	Frame label="Statistics" {
@@ -51,7 +56,7 @@ sitemap solar label="Solar DHW"
 			Frame label="Pump" {
 				Text item=PumpOperationTodayHr
 				Text item=TotalPumpOperatingHr
-				Text item=PumpLatestOperation
+				Text item=PumpLatestOperation visibility=[SolarPumpSw==OFF]
 			}
 		}	
 	}
@@ -60,9 +65,9 @@ sitemap solar label="Solar DHW"
 		Group item=gSunPosition label="Sun position"
 	}
 	
-	Frame label="Forecast" {
+	Frame label="Forecast today 1pm" {
 		Text item=Clouds
 		Text item=Condition
-		Text item=SunnyTomorrow
+		Switch item=SunnyTomorrow
 	}
 }

@@ -9,22 +9,22 @@ Group gSolarTrend
 Group gSunPosition	(gStatus)
 
 // Temperature sensors
-Number CollectorTemp	"Collector temperature [%.1f °C]"	<temperature>	(gStatus, gRuntime, gSolarTrend)		{mqtt="<[cloud-mqtt:brodok/solar/collector_temp:state:default]"}
+Number CollectorTemp	"Collector [%.1f °C]"	<temperature>	(gStatus, gRuntime, gSolarTrend)		{mqtt="<[cloud-mqtt:brodok/solar/collector_temp:state:default]"}
 // Either from DHW boiler or from Heat exchanger
-Number ReturnTemp		"Return temperature	[%.1f °C]"		<temperature>	(gStatus, gRuntime, gSolarTrend)		{mqtt="<[cloud-mqtt:brodok/solar/return_temp:state:default]"}
+Number ReturnTemp		"Return	[%.1f °C]"		<temperature>	(gStatus, gRuntime, gSolarTrend)		{mqtt="<[cloud-mqtt:brodok/solar/return_temp:state:default]"}
 //Number OutsideTemp		"Ambient temperature [%.1f °C]"		<temperature>	(gStatus, gWeather)		{weather="locationId=home, type=temperature, property=current"}
 // Remember latest return temperature when solar pump was on @see PumpLastOperation
-Number	LatestDhwReturnTemp	"Latest monitored DHW return [%.1f °C]"	<temperature>	(gStatus)
+Number	LatestDhwReturnTemp	"DHW [%.1f °C]"	<temperature>	(gStatus)	{mqtt="<[cloud-mqtt:brodok/solar/temp/dhw:state:default]"}
 
 // Other Inputs
-Switch 	DHW_Request		"DHW request"		(gStatus)
+Switch 	DHW_Request		"DHW request"		(gStatus) // not in use
 // During a Heating season it's worth to use collector for underfloor heating
 Switch	HeatingSupportSw	"Heating support"	(gStatus, gRuntime)
 // Trigger collector overheating protection when family is away
 Switch	HolidayModeSw		"Holiday mode"		(gStatus, gTuning)
 // Weather prediction
-Switch	RainyTomorrow		"Rain showers forecast"	(gWeather)
-Switch	SunnyTomorrow		"Sunny afternoon tomorrow [%s]"	(gWeather)
+Switch	RainyTomorrow		"Rain showers forecast"	(gWeather) //not used
+Switch	SunnyTomorrow		"Sunny afternoon [%s]"	(gWeather)
 Switch 	DischargeDHWRequest	"Запрос на сброс тепла из бойлера ГВС"	(gStatus)
 // Collector is in shadow
 Switch CollectorInShadow	"Collector in shadow"	(gStatus, gRuntime, gSunPosition)
@@ -55,7 +55,15 @@ Number pHeatingCapacity	"Heating Capacity [%.1f J/(kg*K)]"	(gHeatingMedium)
 Number pGlycolPercent	"Glycol content [%.1f %%]"			(gHeatingMedium)
 Number pFlowRate		"Estimated flow [%.1f l/h]"		(gHeatingMedium)	{mqtt="<[cloud-mqtt:brodok/solar/tuning/flowRate:state:default]"}
 Number pSystemVolume	"System volume [%d ltr]"			(gHeatingMedium)
+Number pSolarFluidType	"Solar fluid"	(gHeatingMedium)
+String SolarFluid	"Solar fluid [%s]" // water or glycol
 
+// Security tokens, API keys, etc.
+Group gSecurity
+String pThingSpeakApiKeySolar	"Solar channel Key [%s]"	(gSecurity)
+String pThingSpeakApiKeyHeating	"Heating channel Key [%s]"	(gSecurity)
+String pOwmApiKey	"OWM API Key [%s]"	(gSecurity)
+String pOwmCityId	"OWM City ID [%s]"	(gSecurity)
 
 // Tuning parameters
 Number	tnDeltaTon	"Delta T on [%.1f °C]"		(gTuning) // 8K (5 - 10K)
@@ -78,7 +86,7 @@ Switch tnIceProtectionEnabled	"Enable ice protection" (gTuning)
 Number	kwhToday	"Today [%.2f kWh]" (gSolarStat)
 Number	kwhThisMonth	"This month [%.2f kWh]" (gSolarStat)
 Number	DhwChargeToday	"DHW solar supply today [%d %%]"	(gSolarStat)
-// Demand is defferent each month. winter: 10 kwh/24h, summer: 6.5 kwh/24h
+// Demand is different each month. winter: 10 kwh/24h, summer: 6.5 kwh/24h
 Number	DhwDailyDemand	"DHW daily demand [%.1f kWh]"	(gStatus) 
 
 
@@ -91,8 +99,8 @@ String	rtControllerStatus	"Controller state [%s]"	(gRuntime)
 
 // Weather conditions tomorrow
 // clouds
-Number   Clouds   "Clouds [%.0f %%]" (gWeather)  {weather="locationId=home, forecast=1, type=clouds, property=percent"}
+Number   Clouds   "Clouds [%.0f %%]" (gWeather)  //{weather="locationId=home, forecast=1, type=clouds, property=percent"}
 
 // condition
-String   Condition        "Condition [%s]"   (gWeather)   {weather="locationId=home, forecast=1, type=condition, property=text"}
-String   Condition_ID     "Condition id [%s]"  (gWeather) {weather="locationId=home, forecast=1, type=condition, property=id"}
+String   Condition        "Condition [%s]"   (gWeather)   //{weather="locationId=home, forecast=1, type=condition, property=text"}
+String   Condition_ID     "Condition id [%s]"  (gWeather) //{weather="locationId=home, forecast=1, type=condition, property=id"}
