@@ -294,6 +294,32 @@ then
 	}
 end
 
+/*
+ * GUI solar controller params
+ */
+rule "Update power density" // Удельная мощность теплоносителя Ватт/градус К
+when
+	Item pHeatingCapacity received update or
+	Item pFlowRate received update
+then
+	var double value = 60.0 //by default 60 W/deg C
+	
+	if (pHeatingCapacity.state instanceof DecimalType &&
+		pFlowRate.state instanceof DecimalType) {
+		
+		val capacity = (pHeatingCapacity.state as DecimalType).doubleValue
+		val flowRate = (pFlowRate.state as DecimalType).doubleValue
+		
+		if (capacity > 3500.0 && capacity < 4200.0) {
+			value = (capacity * flowRate / 3600.0).doubleValue
+			logInfo("solar", "Power density: {} W/deg C @ flow rate: {} l/h", value, flowRate)
+		} else {
+			logWarn("solar", "Invalid heating capacity value: {}", capacity)
+		}
+	
+		postUpdate(rtPowerDensity, value)
+	}
+end
 
 rule "Collector shadow ON/OFF"
 when 
