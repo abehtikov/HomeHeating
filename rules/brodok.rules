@@ -490,6 +490,14 @@ end
 */
 
 
+rule "Convert Atm. Pressure units"
+when
+	Item AtmPressure_mbar changed
+then
+	var mbar = (AtmPressure_mbar.state as DecimalType).doubleValue
+	var mmHg = mbar * 0.75006375541921
+	postUpdate(AtmPressure_mmHg, mmHg.intValue)
+end
 
 /*
  * PWM related rules

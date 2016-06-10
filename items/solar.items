@@ -103,4 +103,4 @@ Number   Clouds   "Clouds [%.0f %%]" (gWeather)  //{weather="locationId=home, fo
 
 // condition
 String   Condition        "Condition [%s]"   (gWeather)   //{weather="locationId=home, forecast=1, type=condition, property=text"}
-String   Condition_ID     "Condition id [%s]"  (gWeather) //{weather="locationId=home, forecast=1, type=condition, property=id"}
+Number   Condition_ID     "Condition id [%d]"  (gWeather) //{weather="locationId=home, forecast=1, type=condition, property=id"}

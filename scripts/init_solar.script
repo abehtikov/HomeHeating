@@ -24,6 +24,7 @@ postUpdate(LatestDhwReturnTemp, 40)
 postUpdate(pSystemVolume, 6)
 postUpdate(pHeatingCapacity, 4187) // water
 postUpdate(pSolarFluidType, 0) // water
+postUpdate(rtPowerDensity, 60)
 
 postUpdate(DischargeDHWRequest, OFF)
 postUpdate(HolidayModeSw, OFF)
