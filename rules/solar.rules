@@ -79,6 +79,7 @@ then
 	}
 end
 
+/*
 rule "Return temperature changed"
 when
 	Item ReturnTemp changed
@@ -102,6 +103,7 @@ then
 		}
 	}
 end
+*/
 
 rule "Low pass Delta T update"
 when 

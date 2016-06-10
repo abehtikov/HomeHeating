@@ -25,7 +25,7 @@ Switch	HolidayModeSw		"Holiday mode"		(gStatus, gTuning)
 // Weather prediction
 Switch	RainyTomorrow		"Rain showers forecast"	(gWeather) //not used
 Switch	SunnyTomorrow		"Sunny afternoon [%s]"	(gWeather)
-Switch 	DischargeDHWRequest	"Запрос на сброс тепла из бойлера ГВС"	(gStatus)
+Switch 	DischargeDHWRequest	"Discharge DHW"	(gStatus)
 // Collector is in shadow
 Switch CollectorInShadow	"Collector in shadow"	(gStatus, gRuntime, gSunPosition)
 // Manual or AUTO operating mode
@@ -45,14 +45,14 @@ Switch SolarPumpSw	"Solar Pump"		(gPump, gRuntime, RelaysGPIO)	{gpio="pin:23 act
 Number PumpStatusON	"Solar pump status"	(gSolarTrend) // 0 - off, 5 - on
 Number PumpOperationAnnualHr	"Annual operating hours [%d h]"		(gPump)
 Number PumpOperationThisMonthHr	"Current month operation [%d h]"	(gPump)
-Number PumpOperationTodayHr		"Today [%.1f h]"					(gPump, gSolarStat)
-Number TotalPumpOperatingHr		"Total pump operation [%.1f h]"		(gPump, gSolarStat)
+Number PumpOperationTodayHr		"Today [%.2f h]"					(gPump, gSolarStat)
+Number TotalPumpOperatingHr		"Total pump operation [%.2f h]"		(gPump, gSolarStat)
 // timestamp when the pump was ON last time
 DateTime	PumpLatestOperation	"Latest operation [%1$tA,  %1$tH:%1$tM]"	(gPump)
 
 // Heating medium
-Number pHeatingCapacity	"Heating Capacity [%.1f J/(kg*K)]"	(gHeatingMedium)
-Number pGlycolPercent	"Glycol content [%.1f %%]"			(gHeatingMedium)
+Number pHeatingCapacity	"Heating Capacity [%.0f J/(kg*K)]"	(gHeatingMedium)
+Number pGlycolPercent	"Glycol content [%.0f %%]"			(gHeatingMedium)
 Number pFlowRate		"Estimated flow [%.1f l/h]"		(gHeatingMedium)	{mqtt="<[cloud-mqtt:brodok/solar/tuning/flowRate:state:default]"}
 Number pSystemVolume	"System volume [%d ltr]"			(gHeatingMedium)
 Number pSolarFluidType	"Solar fluid"	(gHeatingMedium)

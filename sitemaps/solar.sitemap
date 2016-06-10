@@ -1,6 +1,7 @@
 sitemap solar label="Solar DHW"
 {
 	Frame label="Solar thermal" {
+		Text item=rtControllerStatus
 		Group item=gRuntime label="Runtime"
 	}
 
@@ -12,9 +13,9 @@ sitemap solar label="Solar DHW"
 			}
 			Frame label="Heating support" {
 				Switch item=HeatingSupportSw
-				Setpoint item=tnTminHeatingSupport minValue=22 maxValue=30 step=1
+				Setpoint item=tnTminHeatingSupport minValue=22 maxValue=26 step=1
 			}
-			Frame label="Delta T Low Pass filter"{
+			Frame label="Delta T filter"{
 				Setpoint item=tnLowPassAlpha minValue=0.05 maxValue=0.3 step=0.05
 			}
 			Frame label="Frost protection" {
@@ -35,6 +36,7 @@ sitemap solar label="Solar DHW"
 	
 	Frame label="Thermal system parameters" {
 		Group item=gHeatingMedium label="Solar fluid" {
+			Text item=SolarFluid
 			Text item=pHeatingCapacity
 			Text item=pFlowRate
 			Text item=pGlycolPercent visibility=[pSolarFluidType==1]
