@@ -417,13 +417,14 @@ then
 			sendCommand(SolarPumpSw, OFF)
 		
 			// notify user about possible collector stagnation
-			logWarn("solar", "TReturn rised to {} C. " +
-				"DHW protection enabled. Collector stagnation may occur.")
+			logWarn("solar", "TReturn rised to {} C. DHW protection enabled. " +
+				"Collector stagnation may occur.", tReturn)
 		}
 	}
 	
 	if (appState == "OVP" && tColl < tMin) {
 		sendCommand(rtControllerStatus, "IDLE")
+		logInfo("solar", "TCollector: {} C. Overheating protection is OFF.", tColl)
 	}
 end
 
