@@ -210,15 +210,6 @@ then
 	// log pump start time
 	pump_on = true
 	postUpdate(PumpStatusON, 5)
-	
-	// avoid switching the pump off until the temperatures stabilize
-	// Low pass filter on deltaT implements this use-case (prevents from switching OFF too early)
-	/* 
-	sendCommand(rtAllowTurnOffPump, OFF)
-	pumpDeadbandTimer = createTimer(now.plusMinutes(9)) [|
-		postUpdate(rtAllowTurnOffPump, ON)
-	]
-	*/
 end
 
 rule "Solar Pump switches OFF"
@@ -227,26 +218,16 @@ when
 then
 	// log pump shutdown
 	pump_on = false
-	
-	// remember latest DHW return temperature
-	if (HeatingSupportSw.state == OFF) {
-		var tReturn = (ReturnTemp.state as DecimalType).doubleValue
-		//var delta = (rtFiltDeltaT.state as DecimalType).doubleValue
-		postUpdate(LatestDhwReturnTemp, tReturn /*- delta/2*/)
-		postUpdate(PumpLatestOperation, new DateTimeType())
-		
-		logInfo("solar", "DHW return temperature: {} deg.", tReturn)
-	}
-	
+
 	postUpdate(PumpStatusON, 0) // 0 == Pump OFF
-	
 end
 
 rule "Pump operation hours"
 when
 	Time cron "45 */3 * * * ?"
 then
-	if (pump_on == true) {
+	// account only 'solar' pump hours
+	if (pump_on == true && rtControllerStatus.state == "CH") {
 		var state = TotalPumpOperatingHr.state
 		if (state == Undefined || state == Uninitialized) {
 			postUpdate(TotalPumpOperatingHr, 0)
@@ -260,6 +241,7 @@ then
 		}
 	}
 end
+
 
 rule "Reset daily meters"
 when 
@@ -279,6 +261,7 @@ then
 	}
 	dhwMaxToday = 0
 end
+
 
 rule "DHW charge percent"
 when
@@ -339,15 +322,6 @@ then
 	}
 end
 
-/*
-rule "Fire discharge Request"
-when 
-	Item DischargeDHWRequest changed from OFF to ON
-then
-	val temp = (LatestDhwReturnTemp.state as DecimalType).doubleValue
-	logInfo("solar", "High return temperature observed: {} C. Request DHW boiler discharge.", temp)
-end
-*/
 
 rule "Discharge timer 7am"
 when
@@ -411,7 +385,7 @@ then
 	val appState = rtControllerStatus.state
 	
 	if (tnIceProtectionEnabled.state == ON && SolarPumpSw.state == OFF) {
-		
+		// check if FROST PROTECTION is required
 		var tempSP = (tnIceProtectionTMin.state as DecimalType).doubleValue
 		if (tempSP < 1) {tempSP = 2.0}
 		
@@ -443,6 +417,8 @@ then
 			sendCommand(SolarPumpSw, OFF)
 		
 			// notify user about possible collector stagnation
+			logWarn("solar", "TReturn rised to {} C. " +
+				"DHW protection enabled. Collector stagnation may occur.")
 		}
 	}
 	
@@ -463,6 +439,22 @@ then
 	
 	if (previousState == "DIS" && appState == "IDLE") {
 		logInfo("solar", "Discharge DHW finished event handled here.")
+	}
+	
+	if (appState == "IDLE") {
+	
+		// record latest DHW temperature when the following events occured:
+		// DIS --> IDLE or CH --> IDLE
+		if (previousState == "CH" || previousState == "DIS") {
+				
+			if (HeatingSupportSw.state == OFF) {
+				var tReturn = (ReturnTemp.state as DecimalType).doubleValue
+				postUpdate(LatestDhwReturnTemp, tReturn)
+				postUpdate(PumpLatestOperation, new DateTimeType())
+				
+				logInfo("solar", "DHW temperature: {} C.", tReturn)
+			}
+		}
 	}
 end
 
@@ -518,8 +510,7 @@ then
 	// flowRate
 	val f5 = (pFlowRate.state as DecimalType).doubleValue
 	val f6 = (LatestDhwReturnTemp.state as DecimalType).doubleValue
-	
-	//val api_key = "4ZYKQYVC6E4WYELM"
+
 	var url = String::format("https://api.thingspeak.com/update?"
 		+ "api_key=%7$s"
 		+ "&field1=%1$.2f"
@@ -542,7 +533,6 @@ when
 	Item Pi_Temperature received update
 then
 	val value = (Pi_Temperature.state as DecimalType).doubleValue
-	//val api_key = "Z2YLVVS4CRNV2AVX"
 	var url = String::format("https://api.thingspeak.com/update?api_key=%2$s&field1=%1$.2f",
 		value, pThingSpeakApiKeyHeating.state
 	)

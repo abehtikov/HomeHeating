@@ -5,15 +5,9 @@
 
 logInfo("startup", "initializing solar controller parameters...")
 
-sendCommand(SolarPumpSw, OFF)
-
-sendCommand(ManualOperation, OFF)
-
-sendCommand(rtControllerStatus, "IDLE")
-
 postUpdate(tnDeltaTon, 10)
 postUpdate(tnDeltaToff, 2.5)
-//postUpdate(tnCollectorPowerFactor, 62)
+postUpdate(tnLowPassAlpha, 0.25)
 postUpdate(tnTminHeatingSupport, 22)
 postUpdate(pFlowRate, 52.7)
 
@@ -22,9 +16,10 @@ postUpdate(HeatingSupportSw, OFF)
 postUpdate(LatestDhwReturnTemp, 40)
 
 postUpdate(pSystemVolume, 6)
-postUpdate(pHeatingCapacity, 4187) // water
-postUpdate(pSolarFluidType, 0) // water
-postUpdate(rtPowerDensity, 60)
+sendCommand(pSolarFluidType, 0)
+//postUpdate(pHeatingCapacity, 4187) // water
+//postUpdate(pSolarFluidType, 0) // water
+//postUpdate(rtPowerDensity, 60)
 
 postUpdate(DischargeDHWRequest, OFF)
 postUpdate(HolidayModeSw, OFF)
@@ -45,3 +40,10 @@ postUpdate(tnIceProtectionEnabled, ON)
 //Overheating protection
 postUpdate(tnOverheatingTmax, 85)
 postUpdate(tnOverheatingTmin, 60)
+
+
+sendCommand(SolarPumpSw, OFF)
+
+sendCommand(ManualOperation, OFF)
+
+sendCommand(rtControllerStatus, "IDLE")
