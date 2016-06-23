@@ -26,6 +26,12 @@ sitemap solar label="Solar DHW"
 				Setpoint item=tnOverheatingTmax minValue=75 maxValue=95 step=5
 				Setpoint item=tnOverheatingTmin minValue=45 maxValue=65 step=5 
 			}
+			Frame label="Discharge params" {
+				Setpoint item=tnDischargeKwhMin minValue=0.5 maxValue=3 step=0.5
+				Setpoint item=tnDischargeHrMin minValue=0.5 maxValue=3 step=0.5 
+				Setpoint item=tnDhwDischargeTReturn minValue=65 maxValue=80 step=5
+			}
+
 			Frame label="Misc." {
 				Switch item=ManualOperation
 				Switch item=HolidayModeSw
@@ -35,12 +41,12 @@ sitemap solar label="Solar DHW"
 	}
 	
 	Frame label="Thermal system parameters" {
-		Group item=gHeatingMedium label="Solar fluid" {
+		Group item=gHeatingMedium label="Heat transfer fluid" {
 			Text item=SolarFluid
 			Text item=pHeatingCapacity
 			Text item=pFlowRate
 			Text item=pGlycolPercent visibility=[pSolarFluidType==1]
-			Switch item=pSolarFluidType label="Water or Glycol" mappings=[0="Water", 1="Glycol"]
+			Switch item=pSolarFluidType label="Choose fluid" mappings=[0="Water", 1="Glycol"]
 		}
 	}
 

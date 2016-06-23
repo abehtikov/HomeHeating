@@ -25,7 +25,7 @@ Switch	HolidayModeSw		"Holiday mode"		(gStatus, gTuning)
 // Weather prediction
 Switch	RainyTomorrow		"Rain showers forecast"	(gWeather) //not used
 Switch	SunnyTomorrow		"Sunny afternoon [%s]"	(gWeather)
-Switch 	DischargeDHWRequest	"Discharge DHW"	(gStatus)
+Switch 	DischargeDHWRequest	"Discharge DHW"	(gStatus)	{mqtt="<[cloud-mqtt:brodok/solar/dhw/discharge:command:REGEX((on|off))]"}
 // Collector is in shadow
 Switch CollectorInShadow	"Collector in shadow"	(gStatus, gRuntime, gSunPosition)
 // Manual or AUTO operating mode
@@ -68,12 +68,15 @@ String pOwmCityId	"OWM City ID [%s]"	(gSecurity)
 // Tuning parameters
 Number	tnDeltaTon	"Delta T on [%.1f °C]"		(gTuning) // 8K (5 - 10K)
 Number	tnDeltaToff	"Delta T off [%.1f °C]"	(gTuning) // 2K
-Number	tnTminHeatingSupport	"Heating support Min Temperature [%d °C]"	(gTuning)
+Number	tnTminHeatingSupport	"Min. Temperature [%d °C]"	(gTuning)
 Number tnLowPassAlpha "Low pass filter alpha [%.2f]"	(gTuning)	{mqtt="<[cloud-mqtt:brodok/solar/tuning/lowPassAlpha:state:default]"}
 
 // DHW storage protection
-Number tnDischargeKwhMin "Min. discharge SP [%.1f kWh]"	(gTuning)
-Number tnDischargeHrMin	"Min. duration [%.1f h]"	(gTuning)
+Number tnDischargeKwhMin "Min. discharge SP [%.1f kWh]"	(gTuning)	{mqtt="<[cloud-mqtt:brodok/solar/tuning/discharge/kwh:state:default]"}
+Number tnDischargeHrMin	"Min. duration [%.1f h]"	(gTuning)	{mqtt="<[cloud-mqtt:brodok/solar/tuning/discharge/hr:state:default]"}
+// When this TReturn temperature is achieved - DHW Discharge request is toggled
+Number tnDhwDischargeTReturn "Min. TReturn [%.0f °C]"	(gTuning)
+
 // Overheating protection
 Number tnOverheatingTmax	"Max. T Return [%.0f °C]" (gTuning)
 Number tnOverheatingTmin	"Min. T Collector [%.0f °C]" (gTuning)

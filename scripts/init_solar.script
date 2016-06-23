@@ -22,7 +22,7 @@ sendCommand(pSolarFluidType, 0)
 //postUpdate(rtPowerDensity, 60)
 
 postUpdate(DischargeDHWRequest, OFF)
-postUpdate(HolidayModeSw, OFF)
+postUpdate(HolidayModeSw, ON)
 
 postUpdate(kwhToday, 0)
 postUpdate(kwhThisMonth, 0)
@@ -32,6 +32,7 @@ postUpdate(SunnyTomorrow, ON)
 // discharge options
 postUpdate(tnDischargeKwhMin, 2.0)
 postUpdate(tnDischargeHrMin, 2.5)
+postUpdate(tnDhwDischargeTReturn, 65)
 
 //frost protection
 postUpdate(tnIceProtectionTMin, 2.0)
