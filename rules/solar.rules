@@ -100,6 +100,8 @@ then
 		tfCollector = tfCollector + collectorTder
 		logDebug("solar", "T collector rate of change: {} deg/minute", collectorTder)
 	}
+	val int vv = (collectorTder * 1000).intValue
+	postUpdate(rtCollTder, vv / 1000.0)
 end
 
 
@@ -392,10 +394,15 @@ rule "SolarPump back to AUTO"
 when
 	Item ManualOperation changed from ON to OFF
 then
-	if (pump_on) {
+	val appState = rtControllerStatus.state
+	
+	// synchronize controller status with pump state
+	if (pump_on && (appState == "IDLE" || appState == "OVP")) {
 		sendCommand(rtControllerStatus, "CH")
-	} else {
-		sendCommand(rtControllerStatus, "IDLE")
+	}
+	
+	if (!pump_on && (appState == "CH" || appState == "DIS" || appState == "FRP")) {
+		sendCommand(rtControllerStatus, "IDLE")	
 	}
 end
 
@@ -407,10 +414,14 @@ then
 	val tReturn = (ReturnTemp.state as DecimalType).doubleValue
 	val appState = rtControllerStatus.state
 	
-	if (tnIceProtectionEnabled.state == ON && SolarPumpSw.state == OFF) {
+	if (tnIceProtectionEnabled.state == ON && appState == "IDLE") {//&& SolarPumpSw.state == OFF) {
 		// check if FROST PROTECTION is required
 		var tempSP = (tnIceProtectionTMin.state as DecimalType).doubleValue
-		if (tempSP < 1) {tempSP = 2.0} // TODO migh be a subject to change for glycol fluids
+		if (pSolarFluidType.state == 0 && tempSP < 1) {
+			tempSP = 2.5
+		} else { // propylene glycol
+			tempSP = -25
+		}
 		
 		if (tColl < tempSP) {
 			sendCommand(rtControllerStatus, "FRP")

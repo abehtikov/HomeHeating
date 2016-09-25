@@ -103,6 +103,7 @@ Number	rtPowerDensity	"Удельная мощность [%.1f W/°C]"	(gRuntime
 String	rtControllerStatus	"Controller state [%s]"	(gRuntime)
 // water consumption event
 Switch	rtDHWConsumptionEvent	"DHW draw-off"	(gRuntime)
+Number	rtCollTder	"Collector T ROC [%.2f °C/min]"	(gRuntime)
 
 // Weather conditions tomorrow
 // clouds

@@ -12,10 +12,6 @@ sitemap solar label="Solar DHW"
 				Setpoint item=tnDeltaTon minValue=6 maxValue=10 step=1
 				Setpoint item=tnRiseTCollector minValue=0.2 maxValue=1 step=0.1
 			}
-			Frame label="Heating support" {
-				Switch item=HeatingSupportSw
-				Setpoint item=tnTminHeatingSupport minValue=22 maxValue=26 step=1
-			}
 			Frame label="Delta T filter"{
 				Setpoint item=tnLowPassAlpha minValue=0.05 maxValue=0.3 step=0.05
 			}
@@ -29,7 +25,10 @@ sitemap solar label="Solar DHW"
 				//Setpoint item=tnDischargeHrMin minValue=0.5 maxValue=3 step=0.5 
 				Setpoint item=tnDhwDischargeTReturn minValue=60 maxValue=75 step=5
 			}
-
+			Frame label="Heating support" {
+				Switch item=HeatingSupportSw
+				Setpoint item=tnTminHeatingSupport minValue=22 maxValue=26 step=1
+			}
 			Frame label="Misc." {
 				Switch item=ManualOperation
 				Switch item=HolidayModeSw
@@ -39,7 +38,7 @@ sitemap solar label="Solar DHW"
 	
 	Frame label="Thermal system parameters" {
 		Group item=gHeatingMedium label="Heat transfer fluid" {
-			Frame label="Fliud type" {
+			Frame label="Heating medium" {
 				Text item=SolarFluid
 				Text item=pHeatingCapacity
 				Text item=pFlowRate
@@ -48,7 +47,7 @@ sitemap solar label="Solar DHW"
 			}
 			Frame label="Frost protection" {
 				Switch item=tnIceProtectionEnabled
-				Setpoint item=tnIceProtectionTMin minValue=1 maxValue=5 step=1 visibility=[pSolarFluidType==0]
+				Setpoint item=tnIceProtectionTMin minValue=1 maxValue=6 step=1 visibility=[pSolarFluidType==0]
 				//Setpoint item=tnGlycolProtectionTMin minValue=-30 maxValue=-10 step=5 visibility=[pSolarFluidType==1]
 			}
 		}
