@@ -33,7 +33,7 @@ var double collectorTder = 0 // rate of change of collector outlet T (deg/minute
 var double tfCollector = -99 // low pass filtered collector Temperature
 
 //var double wattMinute = 0 // Watt*min runtime value
-var double wattHour = 0
+var double wattHour = 0.0
 
 /******** Common diff. controller rules   */
 
