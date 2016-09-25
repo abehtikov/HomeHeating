@@ -28,7 +28,12 @@ var Timer iceProtectTimer = null
 var double dischargeKWH = 0
 var double dischargeKwhMin
 
-var double deltaTder = 0 // devrivative of filtered deltaT 
+//var double deltaTder = 0 // devrivative of filtered deltaT 
+var double collectorTder = 0 // rate of change of collector outlet T (deg/minute)
+var double tfCollector = -99 // low pass filtered collector Temperature
+
+//var double wattMinute = 0 // Watt*min runtime value
+var double wattHour = 0
 
 /******** Common diff. controller rules   */
 
@@ -50,7 +55,7 @@ then
 			val lastDhwTemp = (LatestDhwReturnTemp.state as DecimalType).doubleValue
 			tDelta = tColl - lastDhwTemp
 			
-		} else if (SolarPumpSw.state == ON && rtControllerStatus.state != "FRP") {
+		} else if (SolarPumpSw.state == ON /*&& rtControllerStatus.state != "FRP"*/) {
 			// CHARGE or DISCHARGE mode only
 			postUpdate(LatestDhwReturnTemp, tReturn)
 			
@@ -61,8 +66,6 @@ then
 		}
 		
 		logDebug("solar", "Temperature drop is: {} K", tDelta)
-	
-		val double prevDelta = filteredValue
 		
 		if (filteredValue == -99) {
 			filteredValue = tDelta.doubleValue
@@ -75,40 +78,30 @@ then
 		logDebug("solar.rules", "DeltaT after Low Pass filter (a={}) is: {} K", alpha, filteredValue)
 		
 		postUpdate(rtDeltaT, tDelta)
-		postUpdate(rtFiltDeltaT, filteredValue)
-		
-		deltaTder = filteredValue - prevDelta // Rate of change DeltaT
+		postUpdate(rtFiltDeltaT, filteredValue)		
 		
 	} else {
 		logInfo("solar", "Either collector or return temperature is undefined.")
 	}
 end
 
-/*
-rule "Return temperature changed"
-when
-	Item ReturnTemp changed
+rule "Collector T Sensor update"
+when 
+	Item CollectorTemp received update
 then
-	val temp = (ReturnTemp.state as DecimalType).doubleValue
-	if (SolarPumpSw.state == ON) {	
-		postUpdate(LatestDhwReturnTemp, temp)
-		
-		// over heating protection
-		if (HolidayModeSw.state == ON && SunnyTomorrow.state == ON) {
-			if (temp < 50) {
-				//postUpdate(DischargeDHWRequest, OFF)
-				
-			} else if (temp > dischargeRequestTresholdTemp) {
-				postUpdate(DischargeDHWRequest, ON)
-			}
-		}  
-		
-		if (temp > 85) {
-			// stop charging DHW storage to avoid damage
-		}
+	var tColl = (CollectorTemp.state as DecimalType).doubleValue
+	
+	// T Collector rate of change
+	if (tfCollector == -99) {
+		tfCollector = tColl
+		collectorTder = 0
+	} else {
+		collectorTder = (alpha * (tColl - tfCollector)).doubleValue // deg per minute
+		tfCollector = tfCollector + collectorTder
+		logDebug("solar", "T collector rate of change: {} deg/minute", collectorTder)
 	}
 end
-*/
+
 
 rule "Low pass Delta T update"
 when 
@@ -119,6 +112,16 @@ then
 	var deltaMax = (tnDeltaTon.state as DecimalType).doubleValue
 	val appState = rtControllerStatus.state
 	
+	var powerFactor = (rtPowerDensity.state as DecimalType).doubleValue
+	var power = deltaT * powerFactor
+	
+	if (pump_on) {	
+		wattHour = (power / 60.0).doubleValue
+	} else {
+		wattHour = 0
+	}
+	var delta_kwh = wattHour / 1000.0
+	
 	// logInfo("solar", "Execute DeltaT update. Current pump state is: " + SolarPumpSw.state)
 	if (ManualOperation.state == ON) {
 		
@@ -127,11 +130,7 @@ then
 	
 	//} else if (CollectorInShadow.state == ON && DischargeDHWRequest == ON) {	
 	} else if (appState == "DIS") {
-		
-		var powerFactor = (rtPowerDensity.state as DecimalType).doubleValue
-		var power = deltaT * powerFactor
-		var delta_kwh = (power / 1000.0) / 60.0
-		
+
 		dischargeKWH = (dischargeKWH - delta_kwh).doubleValue
 		logDebug("solar", "Discharging DHW Boiler... {} kWh", dischargeKWH)
 		dischargeKwhMin = (tnDischargeKwhMin.state as DecimalType).doubleValue
@@ -139,17 +138,17 @@ then
 		var String reason = null
 		if (dischargeKWH > dischargeKwhMin) {
 			reason = "discharge amount is achieved"
-			sendCommand(DischargeDHWRequest, OFF)
-		} else if (power > -100) {
+		} else if (power > -50) {
 			// delta is to low for discharge
 			reason = "delta T is too low"
 		}
 		
 		if (reason != null) {
-			if (dhwDischargeTimer != null) { //disable timer in case we discharge faster than 2.5 h
+			if (dhwDischargeTimer != null) { //disable timer in case we discharge before the timer expires
 				dhwDischargeTimer.cancel()
 			}
 			logInfo("solar", "Stop DHW discharge. Reason: {}", reason)
+			sendCommand(DischargeDHWRequest, OFF)
 			sendCommand(rtControllerStatus, "IDLE")
 		}
 	} else if (appState == "OVP") {
@@ -157,9 +156,6 @@ then
 	} else { // appState == IDLE || appState == CH
 		
 		if (SolarPumpSw.state == ON) {
-			
-			var powerFactor = (rtPowerDensity.state as DecimalType).doubleValue
-			var power = deltaT * powerFactor
 			
 			var tMinDrop = (tnDeltaToff.state as DecimalType).doubleValue
 			if (deltaT < tMinDrop) {
@@ -174,33 +170,34 @@ then
 			}
 			
 			//assume that exactly 1 minute has passed since the previous calculation
-			var inc_kwh = (power / 1000.0) / 60.0
+			//var inc_kwh = (power / 1000.0) / 60.0
 			var prev = (kwhToday.state as DecimalType).doubleValue
-			postUpdate(kwhToday, prev + inc_kwh) 
+			postUpdate(kwhToday, prev + delta_kwh) 
 			
 		// Pump is OFF	
 		} else if ((HeatingSupportSw.state == OFF) && (DHW_Request.state == ON)) { // check the mode
 			
 			var latestDhwReturnTemp = (LatestDhwReturnTemp.state as DecimalType).doubleValue
+			var tnRise = (tnRiseTCollector.state as DecimalType).doubleValue
 			
 			// Enable solar DHW
 			var tDiff = tColl - latestDhwReturnTemp
-			if (CollectorInShadow.state == OFF && deltaTder > 1.5) {
-				tDiff = tDiff + 3
-				logInfo("solar", "DeltaT derivative rised to {} deg/min. " +
-					"Collector sharp temperature rise is expected. Adjust tDiff by 3C up.", deltaTder
-				)
-			}
-			
+
 			if (tDiff > deltaMax) {
 				
-				logInfo("solar", "T collector: {} C, T return: {} C, deltaT ON: {} C.", 
+				logInfo("solar", "T collector: {} C, DHW: {} C, deltaT ON: {} C.", 
 					tColl, latestDhwReturnTemp, deltaMax.intValue
 				)
 				logInfo("solar", "T-diff: {} K --> Switching solar pump ON.", tDiff)
 				sendCommand(SolarPumpSw, ON)
 				sendCommand(rtControllerStatus, "CH")
+				
+			} else if (CollectorInShadow.state == OFF && tDiff > 0 && collectorTder > tnRise) {
+				logInfo("solar", "T collector rise is {} deg/min --> Switching solar pump ON.", collectorTder)
+				sendCommand(SolarPumpSw, ON)
+				sendCommand(rtControllerStatus, "CH")
 			}
+			
 		// Heating support
 		} else if (HeatingSupportSw.state == ON) {
 			var tMinUnderfloor = (tnTminHeatingSupport.state as DecimalType).doubleValue
@@ -230,7 +227,6 @@ when
 then
 	// log pump shutdown
 	pump_on = false
-
 	postUpdate(PumpStatusON, 0) // 0 == Pump OFF
 end
 
@@ -266,15 +262,13 @@ then
 	postUpdate(kwhThisMonth, month_kwh + lastDay_kwh)
 	
 	postUpdate(PumpOperationTodayHr, 0)
-
-	//check for possible discharge next morning 
-	if (lastDay_kwh > 3 && dhwMaxToday > dischargeRequestTresholdTemp) {
-		postUpdate(DischargeDHWRequest, ON)
-	}
+	
 	dhwMaxToday = 0
 end
 
-
+/* moved to Check Collector T 
+ * 
+ *
 rule "DHW charge percent"
 when
 	Item kwhToday received update
@@ -289,6 +283,8 @@ then
 		postUpdate(DhwChargeToday, 0)
 	}
 end
+*/
+
 
 /*
  * GUI solar controller params
@@ -328,22 +324,22 @@ then
 		logInfo("solar", "Collector goes out of shadow."
 			+ " Sun azimuth: {}, altitude: {}", azimuth, elevation)
 	
-	} else if (previousState == OFF) {
+	} else if (previousState == OFF) { // Collector now is in shadow.
 
 		postUpdate(SunbeamAngleToFacade, -1.0)
-	}
-end
-
-
-rule "Discharge timer 5am"
-when
-	Time cron "0 0 5 * * ?"
-then
-	if (DischargeDHWRequest.state == ON) {
-		if (HolidayModeSw.state == ON || SunnyTomorrow.state == ON) {
-			logInfo("solar", "Starting up the pump to discharge DHW storage.")
-			sendCommand(rtControllerStatus, "DIS")
-		}	
+		
+		//check for possible discharge 
+		val lastDay_kwh = (kwhToday.state as DecimalType).doubleValue
+		if (lastDay_kwh > 2 && dhwMaxToday > dischargeRequestTresholdTemp) {
+			sendCommand(DischargeDHWRequest, ON)
+		}
+		// check for discharge request
+		if (DischargeDHWRequest.state == ON) {
+			if (HolidayModeSw.state == ON || SunnyTomorrow.state == ON) {
+				logInfo("solar", "Starting up the pump to discharge DHW storage.")
+				sendCommand(rtControllerStatus, "DIS")
+			}	
+		}
 	}
 end
 
@@ -369,7 +365,7 @@ when
 then
 	val int value = (tnDhwDischargeTReturn.state as DecimalType).intValue
 	
-	if (value >= 65 && value <= 80) {
+	if (value >= 60 && value <= 75) {
 		logInfo("solar", "DHW Discharge threshold T updated from {} to {}", dischargeRequestTresholdTemp, value)
 		dischargeRequestTresholdTemp = value
 	}
@@ -392,6 +388,16 @@ then
 	])
 end	
 
+rule "SolarPump back to AUTO"
+when
+	Item ManualOperation changed from ON to OFF
+then
+	if (pump_on) {
+		sendCommand(rtControllerStatus, "CH")
+	} else {
+		sendCommand(rtControllerStatus, "IDLE")
+	}
+end
 
 rule "Check collector T"
 when
@@ -437,6 +443,22 @@ then
 			logWarn("solar", "TReturn rised to {} C. DHW protection enabled. " +
 				"Collector stagnation may occur.", tReturn)
 		}
+		
+		// DHW charge percent indicator
+		val amount = (kwhToday.state as DecimalType).doubleValue
+		val demand = (DhwDailyDemand.state as DecimalType).doubleValue
+		
+		if (amount > 0 && demand > 0) {
+			var int percent = (100 * amount / demand).intValue
+			postUpdate(DhwChargeToday, percent)
+		} else {
+			postUpdate(DhwChargeToday, 0)
+		}
+		
+		// Dynamic powerDensity for glycol
+		if (pSolarFluidType.state == 1) {
+			// TODO call script
+		}
 	}
 	
 	if (appState == "OVP" && tColl < tMin) {
@@ -481,21 +503,19 @@ rule "Invoke DHW discharge"
 when 
 	Item rtControllerStatus received command DIS
 then
-	sendCommand(SolarPumpSw, ON)
-	// get config parameter of discharge duration
-	val duration = (tnDischargeHrMin.state as DecimalType).doubleValue
-	var int minutes = (duration * 60).intValue
-	if (minutes < 1) {minutes = 30}
-	if (minutes > 180) {minutes = 180}
+	val int hr = 12 // starting from the sunset
+	// discharge power is only about 100-200 Watt at summer night. 
+	// up to 2.4 kWh discharge volume per nigh is possible
 	
-	if (dhwDischargeTimer != null) {
-		dhwDischargeTimer.cancel()
-		dhwDischargeTimer = null
+	if (dhwDischargeTimer != null && dhwDischargeTimer.running) {
+		logInfo("solar", "DHW discharge is already running.")
 	} else {
-		logInfo("solar", "DHW discharge launched for {} minutes. Discharge demand: {} kWh", 
-			minutes, tnDischargeKwhMin.state
+		
+		sendCommand(SolarPumpSw, ON)
+		logInfo("solar", "DHW discharge launched for {}h. Discharge demand: {} kWh", 
+			hr, tnDischargeKwhMin.state
 		)
-		dhwDischargeTimer = createTimer(now.plusMinutes(minutes), [| // +2.5 h to cool down
+		dhwDischargeTimer = createTimer(now.plusHours(hr), [| 
 			sendCommand(DischargeDHWRequest, OFF)
 			sendCommand(rtControllerStatus, "IDLE")
 		])
@@ -543,7 +563,7 @@ end
 
 rule "Update ThingSpeak Solar temperatures"
 when
-	Time cron "15 * * * * ?"
+	Time cron "45 * * * * ?"
 then
 	val field1 = (CollectorTemp.state as DecimalType).doubleValue
 	val field2 = (ReturnTemp.state as DecimalType).doubleValue
@@ -555,14 +575,15 @@ then
 	val f6 = (LatestDhwReturnTemp.state as DecimalType).doubleValue
 
 	var url = String::format("https://api.thingspeak.com/update?"
-		+ "api_key=%7$s"
+		+ "api_key=%8$s"
 		+ "&field1=%1$.2f"
 		+ "&field2=%2$.2f"
 		+ "&field3=%3$d"
 		+ "&field4=%4$.2f"
 		+ "&field5=%5$.1f"
-		+ "&field6=%6$.1f",
-		field1, field2, field3, field4, f5, f6, pThingSpeakApiKeySolar.state
+		+ "&field6=%6$.1f"
+		+ "&field7=%7$.4f",
+		field1, field2, field3, field4, f5, f6, wattHour, pThingSpeakApiKeySolar.state
 	)
 	logDebug("solar", "Update thingspeak channel 61471: " + url)
 	sendHttpGetRequest(url)
@@ -591,7 +612,7 @@ then
 	val type = pSolarFluidType.state
 	
 	if (type == 1) {
-		postUpdate(pHeatingCapacity, 3800)
+		postUpdate(pHeatingCapacity, 3690) // 45% propylene-glycol @ 40C
 		postUpdate(SolarFluid, "Glycol")
 	} else {
 		postUpdate(pHeatingCapacity, 4187)
@@ -636,24 +657,6 @@ then
 end
 
 
-/*
-rule "Weather forecast next day"
-when 
-	Item Clouds received update or
-	Item Condition received update
-then
-	var cloudsPercent = (Clouds.state as DecimalType).intValue
-
-	if (Condition.state == "clear sky") {
-		postUpdate(SunnyTomorrow, ON)
-	} else if (cloudsPercent > 60) {
-		postUpdate(SunnyTomorrow, OFF)
-	} else {
-		postUpdate(SunnyTomorrow, ON)
-	}
-end
-*/
-
 rule "OpenWeatherMap conditions tomorrow"
 when 
 	Item Condition_ID received update
@@ -674,9 +677,9 @@ end
 
 rule "Check OWM forecast"
 when 
-	Time cron "55 52 4 * * ?" // 4:52:55 am every day
-	or Item pSolarFluidType changed
-	//or Item AfterStartup changed to ON
+	Time cron "55 52 23 * * ?" // 23:52:55 am every day
+	//or Item pSolarFluidType changed
+	or Item AfterStartup changed to ON
 then
 	val fmt = "http://api.openweathermap.org/data/2.5/forecast/city?id=%1$s&APPID=%2$s&mode=xml&cnt=8"
 	var url = String::format(fmt, pOwmCityId.state, pOwmApiKey.state)
@@ -695,7 +698,7 @@ then
 		<clouds value="scattered clouds" all="44" unit="%"/>
 	   </time>
 	 */
-	var offset = 4 
+	var offset = 6 
 	var String rootNode = "/weatherdata/forecast/time[" + offset + "]"
 	logDebug("solar", "OWM forecast:\n{}", xml)
 	// assuming the query is executed at 6 am: 1 --> 6am - 9am, 2 --> 9am - 12:00 forecast

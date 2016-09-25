@@ -8,6 +8,7 @@ logInfo("startup", "initializing solar controller parameters...")
 postUpdate(tnDeltaTon, 10)
 postUpdate(tnDeltaToff, 2.5)
 postUpdate(tnLowPassAlpha, 0.25)
+postUpdate(tnRiseTCollector, 0.2) //deg/minute
 postUpdate(tnTminHeatingSupport, 22)
 postUpdate(pFlowRate, 52.7)
 
@@ -31,7 +32,6 @@ postUpdate(PumpOperationTodayHr, 0)
 postUpdate(SunnyTomorrow, ON)
 // discharge options
 postUpdate(tnDischargeKwhMin, 2.0)
-postUpdate(tnDischargeHrMin, 2.5)
 postUpdate(tnDhwDischargeTReturn, 65)
 
 //frost protection

@@ -70,10 +70,11 @@ Number	tnDeltaTon	"Delta T on [%.1f °C]"		(gTuning) // 8K (5 - 10K)
 Number	tnDeltaToff	"Delta T off [%.1f °C]"	(gTuning) // 2K
 Number	tnTminHeatingSupport	"Min. Temperature [%d °C]"	(gTuning)
 Number tnLowPassAlpha "Low pass filter alpha [%.2f]"	(gTuning)	{mqtt="<[cloud-mqtt:brodok/solar/tuning/lowPassAlpha:state:default]"}
+Number tnRiseTCollector	"Collector ROC [%.1f °C/min]" (gTuning)
 
 // DHW storage protection
 Number tnDischargeKwhMin "Min. discharge SP [%.1f kWh]"	(gTuning)	{mqtt="<[cloud-mqtt:brodok/solar/tuning/discharge/kwh:state:default]"}
-Number tnDischargeHrMin	"Min. duration [%.1f h]"	(gTuning)	{mqtt="<[cloud-mqtt:brodok/solar/tuning/discharge/hr:state:default]"}
+//Number tnDischargeHrMin	"Min. duration [%.1f h]"	(gTuning)	{mqtt="<[cloud-mqtt:brodok/solar/tuning/discharge/hr:state:default]"}
 // When this TReturn temperature is achieved - DHW Discharge request is toggled
 Number tnDhwDischargeTReturn "Min. TReturn [%.0f °C]"	(gTuning)
 
@@ -83,6 +84,7 @@ Number tnOverheatingTmin	"Min. T Collector [%.0f °C]" (gTuning)
 
 // ICE protection
 Number tnIceProtectionTMin	"Min. T [%.1f °C]"	(gTuning)
+Number tnGlycolProtectionTMin	"Glycol min. T [%.1f °C]"	(gTuning)
 Switch tnIceProtectionEnabled	"Enable protection" (gTuning)
 
 // Collected Energy from Solar thermal collector
@@ -99,6 +101,8 @@ Number	rtDeltaT			"Current temperature drop [%.1f °C]"		(gRuntime)
 Number	rtFiltDeltaT	"Delta T (filt.) [%.2f °C]"	(gRuntime, gSolarTrend)
 Number	rtPowerDensity	"Удельная мощность [%.1f W/°C]"	(gRuntime)
 String	rtControllerStatus	"Controller state [%s]"	(gRuntime)
+// water consumption event
+Switch	rtDHWConsumptionEvent	"DHW draw-off"	(gRuntime)
 
 // Weather conditions tomorrow
 // clouds
