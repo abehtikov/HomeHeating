@@ -77,6 +77,7 @@ Number tnDischargeKwhMin "Min. discharge SP [%.1f kWh]"	(gTuning)	{mqtt="<[cloud
 //Number tnDischargeHrMin	"Min. duration [%.1f h]"	(gTuning)	{mqtt="<[cloud-mqtt:brodok/solar/tuning/discharge/hr:state:default]"}
 // When this TReturn temperature is achieved - DHW Discharge request is toggled
 Number tnDhwDischargeTReturn "Min. TReturn [%.0f °C]"	(gTuning)
+Number tnDischargePowerMin	"Min. threshold [%.0f W]"	(gTuning)
 
 // Overheating protection
 Number tnOverheatingTmax	"Max. T Return [%.0f °C]" (gTuning)

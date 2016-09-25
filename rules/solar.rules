@@ -137,11 +137,17 @@ then
 		logDebug("solar", "Discharging DHW Boiler... {} kWh", dischargeKWH)
 		dischargeKwhMin = (tnDischargeKwhMin.state as DecimalType).doubleValue
 		
+		var minPower = 100
+		if (tnDischargePowerMin.state instanceof DecimalType) {
+			minPower = (tnDischargePowerMin.state as DecimalType).intValue
+		}
+		minPower = minPower * (-1) // negative delta during discharge
+		
 		var String reason = null
 		if (dischargeKWH > dischargeKwhMin) {
 			reason = "discharge amount is achieved"
 			sendCommand(DischargeDHWRequest, OFF)
-		} else if (power > -50) {
+		} else if (power > minPower) {
 			// delta is to low for discharge
 			reason = "delta T is too low"
 		}
@@ -491,6 +497,23 @@ then
 end
 
 
+/*
+ * This rule is required in case of very hot night when discharge 
+ * power falls below 50 Watt. Just to avoid DHW overheating on holiday
+ * 
+ */
+rule "Repeating DHW discharge"
+when 
+	Time cron "56 0 23,0-8 * * ?" // every hour from midnight to 8 am
+then
+	// check for discharge request
+	if (DischargeDHWRequest.state == ON) {
+		if (HolidayModeSw.state == ON || SunnyTomorrow.state == ON) {
+			sendCommand(rtControllerStatus, "DIS")
+		}	
+	}
+end
+
 rule "Invoke DHW discharge"
 when 
 	Item rtControllerStatus received command DIS
@@ -504,8 +527,8 @@ then
 	} else {
 		
 		sendCommand(SolarPumpSw, ON)
-		logInfo("solar", "DHW discharge launched for {}h. Discharge demand: {} kWh", 
-			hr, tnDischargeKwhMin.state
+		logInfo("solar", "DHW discharge started. Discharge demand: {} kWh. Already discharged: {} kWh", 
+			tnDischargeKwhMin.state, dischargeKWH
 		)
 		dhwDischargeTimer = createTimer(now.plusHours(hr), [| 
 			sendCommand(DischargeDHWRequest, OFF)
@@ -669,7 +692,7 @@ end
 
 rule "Check OWM forecast"
 when 
-	Time cron "55 52 23 * * ?" // 23:52:55 am every day
+	Time cron "55 52 19 * * ?" // sunset is 8pm in september
 	//or Item pSolarFluidType changed
 	or Item AfterStartup changed to ON
 then
@@ -690,7 +713,7 @@ then
 		<clouds value="scattered clouds" all="44" unit="%"/>
 	   </time>
 	 */
-	var offset = 6 
+	var offset = 7 
 	var String rootNode = "/weatherdata/forecast/time[" + offset + "]"
 	logDebug("solar", "OWM forecast:\n{}", xml)
 	// assuming the query is executed at 6 am: 1 --> 6am - 9am, 2 --> 9am - 12:00 forecast
@@ -702,7 +725,7 @@ then
 	var condition = transform("XPATH", "string(" + rootNode + "/symbol/@name)", xml)
 	var clouds = transform("XPATH", "number(" + rootNode + "/clouds/@all)", xml)
 	
-	logInfo("solar", "Today 12:00 - 3pm : {}, clouds {}%", condition, clouds)
+	logInfo("solar", "Tomorrow 12:00 - 3pm : {}, clouds {}%", condition, clouds)
 	//var t1 = transform("XPATH", "string(/weatherdata/forecast/time[3]/@from)", xml)
 	//var t2 = transform("XPATH", "string(/weatherdata/forecast/time[3]/@to)", xml)
 	

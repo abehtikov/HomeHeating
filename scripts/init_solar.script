@@ -33,6 +33,7 @@ postUpdate(SunnyTomorrow, ON)
 // discharge options
 postUpdate(tnDischargeKwhMin, 2.0)
 postUpdate(tnDhwDischargeTReturn, 65)
+postUpdate(tnDischargePowerMin, 100)
 
 //frost protection
 postUpdate(tnIceProtectionTMin, 2.0)
