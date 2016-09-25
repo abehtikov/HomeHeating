@@ -140,6 +140,7 @@ then
 		var String reason = null
 		if (dischargeKWH > dischargeKwhMin) {
 			reason = "discharge amount is achieved"
+			sendCommand(DischargeDHWRequest, OFF)
 		} else if (power > -50) {
 			// delta is to low for discharge
 			reason = "delta T is too low"
@@ -149,8 +150,7 @@ then
 			if (dhwDischargeTimer != null) { //disable timer in case we discharge before the timer expires
 				dhwDischargeTimer.cancel()
 			}
-			logInfo("solar", "Stop DHW discharge. Reason: {}", reason)
-			sendCommand(DischargeDHWRequest, OFF)
+			logInfo("solar", "Stop DHW discharge. Reason: {}", reason)		
 			sendCommand(rtControllerStatus, "IDLE")
 		}
 	} else if (appState == "OVP") {
@@ -268,25 +268,6 @@ then
 	dhwMaxToday = 0
 end
 
-/* moved to Check Collector T 
- * 
- *
-rule "DHW charge percent"
-when
-	Item kwhToday received update
-then
-	val amount = (kwhToday.state as DecimalType).doubleValue
-	val demand = (DhwDailyDemand.state as DecimalType).doubleValue
-	
-	if (amount > 0 && demand > 0) {
-		var int percent = (100 * amount / demand).intValue
-		postUpdate(DhwChargeToday, percent)
-	} else {
-		postUpdate(DhwChargeToday, 0)
-	}
-end
-*/
-
 
 /*
  * GUI solar controller params
@@ -330,11 +311,6 @@ then
 
 		postUpdate(SunbeamAngleToFacade, -1.0)
 		
-		//check for possible discharge 
-		val lastDay_kwh = (kwhToday.state as DecimalType).doubleValue
-		if (lastDay_kwh > 2 && dhwMaxToday > dischargeRequestTresholdTemp) {
-			sendCommand(DischargeDHWRequest, ON)
-		}
 		// check for discharge request
 		if (DischargeDHWRequest.state == ON) {
 			if (HolidayModeSw.state == ON || SunnyTomorrow.state == ON) {
@@ -386,7 +362,6 @@ then
 	// we can easily boil water inside the collector if we stop the pump for 15 min. 
 	solarManualOperationTimer = createTimer(now.plusMinutes(15), [|
 		sendCommand(ManualOperation, OFF)
-		// TODO identify application state: CH or IDLE
 	])
 end	
 
@@ -419,7 +394,7 @@ then
 		var tempSP = (tnIceProtectionTMin.state as DecimalType).doubleValue
 		if (pSolarFluidType.state == 0 && tempSP < 1) {
 			tempSP = 2.5
-		} else { // propylene glycol
+		} else if (pSolarFluidType.state == 1) { // propylene glycol
 			tempSP = -25
 		}
 		
@@ -464,6 +439,12 @@ then
 			postUpdate(DhwChargeToday, percent)
 		} else {
 			postUpdate(DhwChargeToday, 0)
+		}
+		
+		//check for possible discharge 
+		if (amount > 2 && dhwMaxToday > dischargeRequestTresholdTemp) {
+			sendCommand(DischargeDHWRequest, ON)
+			dischargeKWH = 0
 		}
 		
 		// Dynamic powerDensity for glycol
@@ -543,7 +524,7 @@ then
 	logInfo("solar", "DHW discharged: {} kWh. Stop the pump.", vv / 100.0)
 	
 	sendCommand(SolarPumpSw, OFF)
-	dischargeKWH = 0
+	//dischargeKWH = 0
 	dhwDischargeTimer = null
 end
 
