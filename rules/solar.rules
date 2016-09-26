@@ -120,7 +120,7 @@ then
 	if (pump_on) {	
 		wattHour = (power / 60.0).doubleValue
 	} else {
-		wattHour = 0
+		wattHour = 0.0
 	}
 	var delta_kwh = wattHour / 1000.0
 	
