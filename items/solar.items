@@ -58,7 +58,7 @@ Number pFlowRate		"Estimated flow [%.1f l/h]"		(gHeatingMedium)	{mqtt="<[cloud-m
 Number pSystemVolume	"System volume [%d ltr]"			(gHeatingMedium)
 Number pSolarFluidType	"Solar fluid"	(gHeatingMedium)
 String SolarFluid	"Solar fluid [%s]" // water or glycol
-Number pKwhChart	"KWH Chart"
+Number pKwhChart	"KWH Chart" // key for UI switch
 
 // Security tokens, API keys, etc.
 Group gSecurity
@@ -105,7 +105,7 @@ Number	rtFiltDeltaT	"Delta T (filt.) [%.2f °C]"	(gRuntime, gSolarTrend)
 Number	rtPowerDensity	"Удельная мощность [%.1f W/°C]"	(gRuntime)
 String	rtControllerStatus	"Controller state [%s]"	(gRuntime)
 // water consumption event
-Switch	rtDHWConsumptionEvent	"DHW draw-off"	(gRuntime)
+Switch	rtDHWConsumptionEvent	"DHW draw-off event"	(gRuntime)
 Number	rtCollTder	"Collector T ROC [%.2f °C/min]"	(gRuntime)
 
 // Weather conditions tomorrow
