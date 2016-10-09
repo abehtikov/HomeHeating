@@ -166,7 +166,7 @@ then
 		if (SolarPumpSw.state == ON) {
 			
 			var tMinDrop = (tnDeltaToff.state as DecimalType).doubleValue
-			if (deltaT < tMinDrop) {
+			if ( deltaT < tMinDrop && collectorTder <= 0 ) {
 				logInfo("solar", "delta T:{} C, delta T OFF: {} C --> switching solar pump OFF.", deltaT, tMinDrop)
 				sendCommand(SolarPumpSw, OFF)
 				sendCommand(rtControllerStatus, "IDLE")
