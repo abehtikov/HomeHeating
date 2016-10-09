@@ -15,7 +15,7 @@ var double alpha = 0.25 // low pass filter tuning param
 
 var double filteredValue = -99 // workaround for null
 
-val int collectorAzimuthAngle = 234
+val int collectorAzimuthAngle = 230
 var int dischargeRequestTresholdTemp = 70
 var double dhwMaxToday = 0
 
@@ -28,11 +28,9 @@ var Timer iceProtectTimer = null
 var double dischargeKWH = 0
 var double dischargeKwhMin
 
-//var double deltaTder = 0 // devrivative of filtered deltaT 
-var double collectorTder = 0 // rate of change of collector outlet T (deg/minute)
+var double collectorTder = 0.0 // rate of change of collector outlet T (deg/minute)
 var double tfCollector = -99 // low pass filtered collector Temperature
 
-//var double wattMinute = 0 // Watt*min runtime value
 var double wattHour = 0.0
 
 /******** Common diff. controller rules   */
@@ -94,9 +92,9 @@ then
 	// T Collector rate of change
 	if (tfCollector == -99) {
 		tfCollector = tColl
-		collectorTder = 0
+		collectorTder = 0.0
 	} else {
-		collectorTder = (alpha * (tColl - tfCollector)).doubleValue // deg per minute
+		collectorTder = (2.0 * alpha * (tColl - tfCollector)).doubleValue // deg per minute
 		tfCollector = tfCollector + collectorTder
 		logDebug("solar", "T collector rate of change: {} deg/minute", collectorTder)
 	}
@@ -167,7 +165,10 @@ then
 			
 			var tMinDrop = (tnDeltaToff.state as DecimalType).doubleValue
 			if ( deltaT < tMinDrop && collectorTder <= 0 ) {
-				logInfo("solar", "delta T:{} C, delta T OFF: {} C --> switching solar pump OFF.", deltaT, tMinDrop)
+				val collTder = (rtCollTder.state as DecimalType).doubleValue
+				logInfo("solar", "delta T:{} C, delta T OFF: {} C, T ROC: {} deg/min. --> switching solar pump OFF.", 
+					deltaT, tMinDrop, collTder
+				)
 				sendCommand(SolarPumpSw, OFF)
 				sendCommand(rtControllerStatus, "IDLE")
 				postUpdate(rtCollectorPower, 0)
@@ -187,21 +188,30 @@ then
 			
 			var latestDhwReturnTemp = (LatestDhwReturnTemp.state as DecimalType).doubleValue
 			var tnRise = (tnRiseTCollector.state as DecimalType).doubleValue
+			var tnSharpRise = tnRise * 2.5
 			
 			// Enable solar DHW
 			var tDiff = tColl - latestDhwReturnTemp
-
+			var int condition = 0 // do not switch pump ON
+			
 			if (tDiff > deltaMax) {
+				condition = 1 //T-Diff is above threshold T_ON value
 				
-				logInfo("solar", "T collector: {} C, DHW: {} C, deltaT ON: {} C.", 
-					tColl, latestDhwReturnTemp, deltaMax.intValue
+			} else if (CollectorInShadow.state == OFF) {
+				if (tDiff > 0 && collectorTder > tnRise) {
+					condition = 2 // T-Diff > 0 & T rise above threshold tuning value
+				}
+				if (collectorTder > tnSharpRise) {
+					condition = 3	// Sharp T rise despite of T-Diff value
+				}
+			} 
+
+			if (condition != 0) {
+				logInfo("solar", "T collector: {} C, DHW: {} C, deltaT ON: {} C, CONDITION = {}", 
+					tColl, latestDhwReturnTemp, deltaMax.intValue, condition
 				)
-				logInfo("solar", "T-diff: {} K --> Switching solar pump ON.", tDiff)
-				sendCommand(SolarPumpSw, ON)
-				sendCommand(rtControllerStatus, "CH")
-				
-			} else if (CollectorInShadow.state == OFF && tDiff > 0 && collectorTder > tnRise) {
-				logInfo("solar", "T collector rise is {} deg/min --> Switching solar pump ON.", collectorTder)
+				val collTder = (rtCollTder.state as DecimalType).doubleValue
+				logInfo("solar", "T-diff: {} K. T rise: {} deg/min --> Switching solar pump ON.", tDiff, collTder)
 				sendCommand(SolarPumpSw, ON)
 				sendCommand(rtControllerStatus, "CH")
 			}
@@ -590,15 +600,17 @@ then
 	val f6 = (LatestDhwReturnTemp.state as DecimalType).doubleValue
 
 	var url = String::format("https://api.thingspeak.com/update?"
-		+ "api_key=%8$s"
+		+ "api_key=%9$s"
 		+ "&field1=%1$.2f"
 		+ "&field2=%2$.2f"
 		+ "&field3=%3$d"
 		+ "&field4=%4$.2f"
 		+ "&field5=%5$.1f"
 		+ "&field6=%6$.1f"
-		+ "&field7=%7$.4f",
-		field1, field2, field3, field4, f5, f6, wattHour, pThingSpeakApiKeySolar.state
+		+ "&field7=%7$.4f"
+		+ "&field8=%8$.4f",
+		field1, field2, field3, field4, f5, f6, 
+		wattHour, collectorTder, pThingSpeakApiKeySolar.state
 	)
 	logDebug("solar", "Update thingspeak channel 61471: " + url)
 	sendHttpGetRequest(url)
@@ -629,6 +641,7 @@ then
 	if (type == 1) {
 		postUpdate(pHeatingCapacity, 3690) // 45% propylene-glycol @ 40C
 		postUpdate(SolarFluid, "Glycol")
+		postUpdate(pGlycolPercent, 45)
 	} else {
 		postUpdate(pHeatingCapacity, 4187)
 		postUpdate(SolarFluid, "Water")

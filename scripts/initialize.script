@@ -22,3 +22,5 @@ if (HI_dailyMeter.state == Uninitialized) {
 	postUpdate(LO_R_dailyMeter, 0)
 	postUpdate(LO_ALL_dailyMeter, 0)
 }
+
+postUpdate(pKwhChart, 0)

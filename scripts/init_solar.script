@@ -10,14 +10,14 @@ postUpdate(tnDeltaToff, 2.5)
 postUpdate(tnLowPassAlpha, 0.25)
 postUpdate(tnRiseTCollector, 0.2) //deg/minute
 postUpdate(tnTminHeatingSupport, 22)
-postUpdate(pFlowRate, 52.7)
+//postUpdate(pFlowRate, 52.7) // by default 60. override by MQTT persisted message
 
 postUpdate(DHW_Request, ON)
 postUpdate(HeatingSupportSw, OFF)
 postUpdate(LatestDhwReturnTemp, 40)
 
 postUpdate(pSystemVolume, 6)
-sendCommand(pSolarFluidType, 0)
+sendCommand(pSolarFluidType, 1)
 //postUpdate(pHeatingCapacity, 4187) // water
 //postUpdate(pSolarFluidType, 0) // water
 //postUpdate(rtPowerDensity, 60)

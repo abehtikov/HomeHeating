@@ -10,20 +10,15 @@ sitemap solar label="Solar DHW"
 			Frame label="Diff controller delta T" {
 				Setpoint item=tnDeltaToff minValue=2.5 maxValue=5 step=0.5
 				Setpoint item=tnDeltaTon minValue=6 maxValue=10 step=1
-				Setpoint item=tnRiseTCollector minValue=0.2 maxValue=1 step=0.1
+				Setpoint item=tnRiseTCollector minValue=0.2 maxValue=0.7 step=0.1
 			}
-			Frame label="Delta T filter"{
-				Setpoint item=tnLowPassAlpha minValue=0.05 maxValue=0.3 step=0.05
+			Frame label="Delta T low pass filter"{
+				//Setpoint item=tnLowPassAlpha minValue=0.05 maxValue=0.3 step=0.05
+				Switch item=tnLowPassAlpha label="Choose value" mappings=[0.2="0.2", 0.25="0.25", 0.3="0.3"]
 			}
 			Frame label="Overheating protection" {
 				Setpoint item=tnOverheatingTmax minValue=75 maxValue=95 step=5
 				Setpoint item=tnOverheatingTmin minValue=45 maxValue=65 step=5 
-			}
-			Frame label="Discharge params" {
-				Switch item=DischargeDHWRequest
-				Setpoint item=tnDischargeKwhMin minValue=0.5 maxValue=3 step=0.5
-				//Setpoint item=tnDischargeHrMin minValue=0.5 maxValue=3 step=0.5 
-				Setpoint item=tnDhwDischargeTReturn minValue=60 maxValue=75 step=5
 			}
 			Frame label="Heating support" {
 				Switch item=HeatingSupportSw
@@ -34,9 +29,16 @@ sitemap solar label="Solar DHW"
 				Switch item=HolidayModeSw
 			}
 		}
-	}
-	
-	Frame label="Thermal system parameters" {
+		Group item=gDischarge label="Discharge DHW options" {
+			Frame label="Enable discharge when" {
+				Switch item=DischargeDHWRequest
+				Setpoint item=tnDhwDischargeTReturn minValue=60 maxValue=75 step=5
+			}
+			Frame label="Stop discharge when" {
+				Setpoint item=tnDischargeKwhMin minValue=0.5 maxValue=3 step=0.5
+				Setpoint item=tnDischargePowerMin minValue=50 maxValue=125 step=25 
+			}
+		}
 		Group item=gHeatingMedium label="Heat transfer fluid" {
 			Frame label="Heating medium" {
 				Text item=SolarFluid
@@ -68,6 +70,11 @@ sitemap solar label="Solar DHW"
 				Text item=PumpOperationTodayHr
 				Text item=TotalPumpOperatingHr
 				Text item=PumpLatestOperation visibility=[SolarPumpSw==OFF]
+			}
+			Frame label="Performance chart" {
+				Webview item=SolarFluid height=10 url="https://thingspeak.com/apps/matlab_visualizations/77316" visibility=[pKwhChart==0]
+				Webview item=SolarFluid height=10 url="https://thingspeak.com/apps/matlab_visualizations/78490" visibility=[pKwhChart==1]
+				Switch item=pKwhChart label="Collector performance" mappings=[0="Weekly", 1="Monthly"]
 			}
 		}	
 	}
