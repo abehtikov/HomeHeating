@@ -265,6 +265,23 @@ then
 			lastValue = (PumpOperationTodayHr.state as DecimalType).doubleValue
 			postUpdate(PumpOperationTodayHr, lastValue + inc)
 		}
+		
+		// DHW charge percent indicator in UI
+		val amount = (kwhToday.state as DecimalType).doubleValue
+		val demand = (DhwDailyDemand.state as DecimalType).doubleValue
+		
+		if (amount > 0 && demand > 0) {
+			var int percent = (100 * amount / demand).intValue
+			postUpdate(DhwChargeToday, percent)
+		} else {
+			postUpdate(DhwChargeToday, 0)
+		}
+		
+		//check for possible discharge 
+		if (amount > 2 && dhwMaxToday > dischargeRequestTresholdTemp) {
+			sendCommand(DischargeDHWRequest, ON)
+			dischargeKWH = 0
+		}
 	}
 end
 
@@ -280,6 +297,7 @@ then
 	postUpdate(kwhThisMonth, month_kwh + lastDay_kwh)
 	
 	postUpdate(PumpOperationTodayHr, 0)
+	postUpdate(DhwChargeToday, 0)
 	
 	dhwMaxToday = 0
 end
@@ -444,23 +462,6 @@ then
 			// notify user about possible collector stagnation
 			logWarn("solar", "TReturn rised to {} C. DHW protection enabled. " +
 				"Collector stagnation may occur.", tReturn)
-		}
-		
-		// DHW charge percent indicator
-		val amount = (kwhToday.state as DecimalType).doubleValue
-		val demand = (DhwDailyDemand.state as DecimalType).doubleValue
-		
-		if (amount > 0 && demand > 0) {
-			var int percent = (100 * amount / demand).intValue
-			postUpdate(DhwChargeToday, percent)
-		} else {
-			postUpdate(DhwChargeToday, 0)
-		}
-		
-		//check for possible discharge 
-		if (amount > 2 && dhwMaxToday > dischargeRequestTresholdTemp) {
-			sendCommand(DischargeDHWRequest, ON)
-			dischargeKWH = 0
 		}
 		
 		// Dynamic powerDensity for glycol
