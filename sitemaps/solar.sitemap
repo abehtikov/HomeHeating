@@ -5,13 +5,10 @@ sitemap solar label="Solar DHW"
 		Group item=gRuntime label="Runtime"
 		Group item=gSolarStat label="System operation" icon="pie" {
 			Frame label="Heat collected" {
+				Text item=kwhThisMonth
 				Text item=kwhToday
 				Text item=DhwChargeToday
 				Text item=LatestDhwReturnTemp icon="temperature"
-			}
-			Frame label="This month" {
-				Text item=kwhThisMonth
-				Text item=rtPowerDensity
 			}
 			Frame label="Pump" {
 				Text item=PumpOperationTodayHr
@@ -20,15 +17,15 @@ sitemap solar label="Solar DHW"
 			}
 			Frame label="Performance chart" {
 				Switch item=pKwhChart label="Period" mappings=[0="Weekly", 1="Monthly"]
-				Webview item=SolarFluid url="https://thingspeak.com/apps/matlab_visualizations/77316" visibility=[pKwhChart==0]
-				Webview item=SolarFluid height=14 url="https://thingspeak.com/apps/matlab_visualizations/78490" visibility=[pKwhChart==1]
+				Webview item=SolarFluid height=13 url="https://thingspeak.com/apps/matlab_visualizations/77316" visibility=[pKwhChart==0]
+				Webview item=SolarFluid height=13 url="https://thingspeak.com/apps/matlab_visualizations/78490" visibility=[pKwhChart==1]
 			}
 		}
 	}
 
 	Frame label="Controller parameters" {
 		Group item=gTuning label="Tuning" icon="config" {
-			Frame label="Diff controller delta T" {
+			Frame label="Diff controller params" {
 				Setpoint item=tnDeltaToff minValue=2.5 maxValue=5 step=0.5
 				Setpoint item=tnDeltaTon minValue=6 maxValue=10 step=1
 				Setpoint item=tnRiseTCollector minValue=0.2 maxValue=0.7 step=0.1
@@ -45,19 +42,15 @@ sitemap solar label="Solar DHW"
 				Switch item=HeatingSupportSw
 				Setpoint item=tnTminHeatingSupport minValue=22 maxValue=26 step=1
 			}
-			Frame label="Misc." {
-				Switch item=ManualOperation
-				Switch item=HolidayModeSw
-			}
 		}
 		Group item=gDischarge label="DHW discharge" {
 			Frame label="Enable discharge when" {
-				Switch item=DischargeDHWRequest
+				Switch item=DischargeDHWRequest label="Discharge request"
 				Setpoint item=tnDhwDischargeTReturn minValue=60 maxValue=75 step=5
 			}
 			Frame label="Stop discharge when either" {
-				Setpoint item=tnDischargeKwhMin label="Amount achieved" minValue=1 maxValue=3 step=0.5
-				Setpoint item=tnDischargePowerMin label="Power is below" minValue=50 maxValue=125 step=25 
+				Setpoint item=tnDischargeKwhMin label="Amount achieved [%.1f kWh]" minValue=1 maxValue=3 step=0.5
+				Setpoint item=tnDischargePowerMin label="Power is below [%d W]" minValue=50 maxValue=125 step=25
 			}
 		}
 		Group item=gHeatingMedium label="Heat transfer fluid" {
@@ -74,6 +67,11 @@ sitemap solar label="Solar DHW"
 				Setpoint item=tnIceProtectionTMin minValue=1 maxValue=6 step=1 visibility=[pSolarFluidType==0]
 				//Setpoint item=tnGlycolProtectionTMin minValue=-30 maxValue=-10 step=5 visibility=[pSolarFluidType==1]
 			}
+		}
+		Group label="Misc." {
+			Switch item=HolidayModeSw
+			Switch item=ManualOperation
+			Switch item=SolarPumpSw
 		}
 	}
 	
