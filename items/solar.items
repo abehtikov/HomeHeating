@@ -55,6 +55,8 @@ DateTime	PumpLatestOperation	"Latest operation [%1$tA,  %1$tH:%1$tM]"	(gPump)
 Number pHeatingCapacity	"Heating Capacity [%.0f J/(kg*K)]"	(gHeatingMedium)
 Number pGlycolPercent	"Glycol content [%.0f %%]"			(gHeatingMedium)
 Number pFlowRate		"Estimated flow [%.1f l/h]"		(gHeatingMedium)	{mqtt="<[cloud-mqtt:brodok/solar/tuning/flowRate:state:default]"}
+//shows how temperature impacts the glycol flow rate
+Number pGlycolFlowFactor "Flow factor [%.1f]"		(gHeatingMedium)
 Number pSystemVolume	"System volume [%d ltr]"			(gHeatingMedium)
 Number pSolarFluidType	"Solar fluid"	(gHeatingMedium)
 String SolarFluid	"Solar fluid [%s]" // water or glycol

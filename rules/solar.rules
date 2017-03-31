@@ -33,6 +33,11 @@ var double tfCollector = -99 // low pass filtered collector Temperature
 
 var double wattHour = 0.0
 
+//key parameters for glycol power density runtime model
+//capacity and flow are changing with temperature
+var double modelGlycolCapacity // heating capacity
+var double modelGlycolFlowRate = 0.0 // flow rate 
+
 /******** Common diff. controller rules   */
 
 rule "Temperature Sensor update"
@@ -60,6 +65,19 @@ then
 			// record maximum dhw T today
 			if (tReturn > dhwMaxToday) {
 				dhwMaxToday = tReturn
+			}
+			
+			if (pSolarFluidType.state == 1) { // propylene glycol
+				modelGlycolCapacity = 3.5 * tReturn + 3550
+				if ((pFlowRate.state instanceof DecimalType) && (pGlycolFlowFactor.state instanceof DecimalType)) {
+					val estimatedFlow = (pFlowRate.state as DecimalType).doubleValue // @20C
+					val modelFlowFactor = (pGlycolFlowFactor.state as DecimalType).doubleValue
+					// simple model Q = k*(T - 20C) + b
+					modelGlycolFlowRate = estimatedFlow + ((tReturn - 20.0) * modelFlowFactor)
+					if (modelGlycolFlowRate < 20) { modelGlycolFlowRate = 20 }
+					var double value = (modelGlycolCapacity * modelGlycolFlowRate / 3600.0).doubleValue
+					postUpdate(rtPowerDensity, value)		
+				}
 			}
 		}
 		
@@ -440,7 +458,7 @@ then
 			val systemVolume = (pSystemVolume.state as DecimalType).doubleValue
 			val flowRate = (pFlowRate.state as DecimalType).doubleValue
 			
-			var min = (30.0 * systemVolume / flowRate).intValue
+			var min = (60.0 * systemVolume / flowRate).intValue
 			if (min < 4) { min = 4 }
 			iceProtectTimer = createTimer(now.plusMinutes(min), [|
 				sendCommand(SolarPumpSw, OFF)
@@ -462,11 +480,6 @@ then
 			// notify user about possible collector stagnation
 			logWarn("solar", "TReturn rised to {} C. DHW protection enabled. " +
 				"Collector stagnation may occur.", tReturn)
-		}
-		
-		// Dynamic powerDensity for glycol
-		if (pSolarFluidType.state == 1) {
-			// TODO call script
 		}
 	}
 	
@@ -597,8 +610,9 @@ then
 	if (SolarPumpSw.state == ON) { field3 = 1 }
 	val field4 = (rtFiltDeltaT.state as DecimalType).doubleValue
 	// flowRate
-	val f5 = (pFlowRate.state as DecimalType).doubleValue
-	val f6 = (LatestDhwReturnTemp.state as DecimalType).doubleValue
+	var f5_flow = (pFlowRate.state as DecimalType).doubleValue
+	if (pump_on && pSolarFluidType.state == 1) { f5_flow = modelGlycolFlowRate }
+	val f6_dhw = (LatestDhwReturnTemp.state as DecimalType).doubleValue
 
 	var url = String::format("https://api.thingspeak.com/update?"
 		+ "api_key=%9$s"
@@ -610,7 +624,7 @@ then
 		+ "&field6=%6$.1f"
 		+ "&field7=%7$.4f"
 		+ "&field8=%8$.4f",
-		field1, field2, field3, field4, f5, f6, 
+		field1, field2, field3, field4, f5_flow, f6_dhw, 
 		wattHour, collectorTder, pThingSpeakApiKeySolar.state
 	)
 	logDebug("solar", "Update thingspeak channel 61471: " + url)
@@ -710,7 +724,7 @@ when
 	//or Item pSolarFluidType changed
 	or Item AfterStartup changed to ON
 then
-	val fmt = "http://api.openweathermap.org/data/2.5/forecast/city?id=%1$s&APPID=%2$s&mode=xml&cnt=8"
+	val fmt = "http://api.openweathermap.org/data/2.5/forecast?id=%1$s&APPID=%2$s&mode=xml&cnt=8"
 	var url = String::format(fmt, pOwmCityId.state, pOwmApiKey.state)
 	logInfo("solar", "Requesting OpenWeatherMap forecast for city {}", pOwmCityId.state)
 	var String xml = sendHttpGetRequest(url)

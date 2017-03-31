@@ -59,6 +59,7 @@ sitemap solar label="Solar DHW"
 				Text item=pGlycolPercent visibility=[pSolarFluidType==1]
 				Text item=pHeatingCapacity
 				Text item=pFlowRate
+				Setpoint item=pGlycolFlowFactor minValue=0.7 maxValue=1.2 step=0.1 visibility=[pSolarFluidType==1]
 				Text item=rtPowerDensity
 				Switch item=pSolarFluidType label="Choose fluid" mappings=[0="Water", 1="Glycol"]
 			}

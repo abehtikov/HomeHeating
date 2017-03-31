@@ -17,7 +17,8 @@ postUpdate(HeatingSupportSw, OFF)
 postUpdate(LatestDhwReturnTemp, 40)
 
 postUpdate(pSystemVolume, 6)
-sendCommand(pSolarFluidType, 1)
+sendCommand(pSolarFluidType, 1) // glycol
+postUpdate(pGlycolFlowFactor, 1.0)
 //postUpdate(pHeatingCapacity, 4187) // water
 //postUpdate(pSolarFluidType, 0) // water
 //postUpdate(rtPowerDensity, 60)
