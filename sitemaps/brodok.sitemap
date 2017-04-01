@@ -1,4 +1,4 @@
-sitemap brodok label="Main Menu"
+sitemap brodok label="Heating"
 {
 	Frame label="Heating" {
 		Group item=ThermoValve icon="firstfloor"
