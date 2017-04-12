@@ -64,6 +64,8 @@ then
 			
 			if (pSolarFluidType.state == 1) { // propylene glycol
 				callScript("glycol_flow") // calculate flow and adjust power density
+			} else {
+				sendCommand(rtFlow, pFlowRate.state)
 			}
 		}
 		
@@ -318,8 +320,7 @@ then
 	var double value = 60.0 //by default 60 W/deg C
 
 	if (pHeatingCapacity.state instanceof DecimalType &&
-		pFlowRate.state instanceof DecimalType &&
-		pSolarFluidType.state == 0) { // valid only for water
+		pFlowRate.state instanceof DecimalType) { // valid only for water
 		
 		val capacity = (pHeatingCapacity.state as DecimalType).doubleValue
 		val flowRate = (pFlowRate.state as DecimalType).doubleValue
@@ -605,8 +606,8 @@ then
 	if (SolarPumpSw.state == ON) { field3 = 1 }
 	val field4 = (rtFiltDeltaT.state as DecimalType).doubleValue
 	// flowRate
-	var f5_flow = (pFlowRate.state as DecimalType).doubleValue
-	if (pump_on && pSolarFluidType.state == 1 && rtFlow.state instanceof DecimalType) { 
+	var f5_flow = 0.0
+	if (pump_on && rtFlow.state instanceof DecimalType) { 
 		f5_flow = (rtFlow.state as DecimalType).doubleValue
 	}
 	val f6_dhw = (LatestDhwReturnTemp.state as DecimalType).doubleValue

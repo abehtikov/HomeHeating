@@ -22,6 +22,8 @@ sendCommand(pFlowModelA, -0.0194)
 sendCommand(pFlowModelB, 1.9006)
 sendCommand(pFlowModelC, 15.1169)
 sendCommand(pSolarFluidType, 1) // glycol
+
+postUpdate(pFlowRate, 52)
 //postUpdate(pHeatingCapacity, 4187) // water
 //postUpdate(pSolarFluidType, 0) // water
 //postUpdate(rtPowerDensity, 60)
