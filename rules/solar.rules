@@ -33,11 +33,6 @@ var double tfCollector = -99 // low pass filtered collector Temperature
 
 var double wattHour = 0.0
 
-//key parameters for glycol power density runtime model
-//capacity and flow are changing with temperature
-var double modelGlycolCapacity // heating capacity
-var double modelGlycolFlowRate = 0.0 // flow rate 
-
 /******** Common diff. controller rules   */
 
 rule "Temperature Sensor update"
@@ -68,16 +63,7 @@ then
 			}
 			
 			if (pSolarFluidType.state == 1) { // propylene glycol
-				modelGlycolCapacity = 3.5 * tReturn + 3550
-				if ((pFlowRate.state instanceof DecimalType) && (pGlycolFlowFactor.state instanceof DecimalType)) {
-					val estimatedFlow = (pFlowRate.state as DecimalType).doubleValue // @20C
-					val modelFlowFactor = (pGlycolFlowFactor.state as DecimalType).doubleValue
-					// simple model Q = k*(T - 20C) + b
-					modelGlycolFlowRate = estimatedFlow + ((tReturn - 20.0) * modelFlowFactor)
-					if (modelGlycolFlowRate < 20) { modelGlycolFlowRate = 20 }
-					var double value = (modelGlycolCapacity * modelGlycolFlowRate / 3600.0).doubleValue
-					postUpdate(rtPowerDensity, value)		
-				}
+				callScript("glycol_flow") // calculate flow and adjust power density
 			}
 		}
 		
@@ -330,9 +316,10 @@ when
 	Item pFlowRate received update
 then
 	var double value = 60.0 //by default 60 W/deg C
-	
+
 	if (pHeatingCapacity.state instanceof DecimalType &&
-		pFlowRate.state instanceof DecimalType) {
+		pFlowRate.state instanceof DecimalType &&
+		pSolarFluidType.state == 0) { // valid only for water
 		
 		val capacity = (pHeatingCapacity.state as DecimalType).doubleValue
 		val flowRate = (pFlowRate.state as DecimalType).doubleValue
@@ -346,6 +333,14 @@ then
 	
 		postUpdate(rtPowerDensity, value)
 	}
+end
+
+rule "Update flow model polynom"
+when
+	Item pGlycolFlowModelPolynom received update
+then
+	callScript("parseFlowModel")
+	//callScript("glycol_flow")
 end
 
 rule "Collector shadow ON/OFF"
@@ -611,7 +606,9 @@ then
 	val field4 = (rtFiltDeltaT.state as DecimalType).doubleValue
 	// flowRate
 	var f5_flow = (pFlowRate.state as DecimalType).doubleValue
-	if (pump_on && pSolarFluidType.state == 1) { f5_flow = modelGlycolFlowRate }
+	if (pump_on && pSolarFluidType.state == 1 && rtFlow.state instanceof DecimalType) { 
+		f5_flow = (modelGlycolFlowRate.state as DecimalType).doubleValue
+	}
 	val f6_dhw = (LatestDhwReturnTemp.state as DecimalType).doubleValue
 
 	var url = String::format("https://api.thingspeak.com/update?"
@@ -619,8 +616,8 @@ then
 		+ "&field1=%1$.2f"
 		+ "&field2=%2$.2f"
 		+ "&field3=%3$d"
-		+ "&field4=%4$.2f"
-		+ "&field5=%5$.1f"
+		+ "&field4=%4$.3f"
+		+ "&field5=%5$.4f"
 		+ "&field6=%6$.1f"
 		+ "&field7=%7$.4f"
 		+ "&field8=%8$.4f",

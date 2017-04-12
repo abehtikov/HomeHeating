@@ -17,8 +17,11 @@ postUpdate(HeatingSupportSw, OFF)
 postUpdate(LatestDhwReturnTemp, 40)
 
 postUpdate(pSystemVolume, 6)
+// glycol flow virt. analyzer model
+sendCommand(pFlowModelA, -0.0194)
+sendCommand(pFlowModelB, 1.9006)
+sendCommand(pFlowModelC, 15.1169)
 sendCommand(pSolarFluidType, 1) // glycol
-postUpdate(pGlycolFlowFactor, 1.0)
 //postUpdate(pHeatingCapacity, 4187) // water
 //postUpdate(pSolarFluidType, 0) // water
 //postUpdate(rtPowerDensity, 60)

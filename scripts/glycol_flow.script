@@ -1,0 +1,30 @@
+/*
+ * Script for automatic calculation of glycol flow based on matlab model.
+ * 
+ * Q = ax^2 + bx + c
+ * 
+ * Q - flow, l/h
+ * x - glycol temperature in return pipe, C 
+ * 
+ * coef. 	a		b		c
+ * Tcoll:   
+ * Tret:  -0.0194  1.9006  15.1169
+ */
+
+
+//key parameters for glycol power density runtime model
+//capacity and flow are changing with temperature
+
+var double t = (ReturnTemp.state as org.openhab.core.library.types.DecimalType).doubleValue
+var double a = (pFlowModelA.state as org.openhab.core.library.types.DecimalType).doubleValue
+var double b = (pFlowModelB.state as org.openhab.core.library.types.DecimalType).doubleValue
+var double c = (pFlowModelC.state as org.openhab.core.library.types.DecimalType).doubleValue
+
+var modelGlycolFlowRate = t * t * a + t * b + c
+
+logDebug("solar.flow.model", "rtFlow: {} l/h", modelGlycolFlowRate)
+
+var modelGlycolCapacity = 3.5 * t + 3550 // heating capacity
+var double value = (modelGlycolCapacity * modelGlycolFlowRate / 3600.0).doubleValue
+postUpdate(rtPowerDensity, value)
+postUpdate(rtFlow, modelGlycolFlowRate)

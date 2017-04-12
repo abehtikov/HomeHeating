@@ -1,0 +1,36 @@
+/*
+ * Script for automatic calculation of glycol flow based on matlab model.
+ * 
+ * Q = ax^2 + bx + c
+ * 
+ * Q - flow, l/h
+ * x - glycol temperature in return pipe, C 
+ * 
+ * coef. 	a		b		c
+ * Tcoll:   
+ * Tret:  -0.0194  1.9006  15.1169
+ */
+
+ var String json = (pGlycolFlowModelPolynom.state as org.openhab.core.library.types.StringType).toString
+//  "brodok/solar/tuning/flowModel":"{ a: "-0.0191", b: "1.8862", c: "15.1672" }"
+
+var String a = transform("JSONPATH", "$.a", json)
+var String b = transform("JSONPATH", "$.b", json)
+var String c = transform("JSONPATH", "$.c", json)
+
+logInfo("solar.flow.model", "update flow model with polynom a:{} b:{} c:{}", a, b, c)
+
+sendCommand(pFlowModelA, a)
+sendCommand(pFlowModelB, b)
+sendCommand(pFlowModelC, c)
+
+val t = 20.0
+val double da = (pFlowModelA.state as org.openhab.core.library.types.DecimalType).doubleValue
+val double db = (pFlowModelB.state as org.openhab.core.library.types.DecimalType).doubleValue
+val double dc = (pFlowModelC.state as org.openhab.core.library.types.DecimalType).doubleValue
+
+var flow20C = t * t * da + t * db + dc
+
+logInfo("solar.flow.model", "estimated flow @20C: {} l/h", flow20C)
+
+postUpdate(pFlowRate, flow20C)
