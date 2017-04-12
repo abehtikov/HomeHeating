@@ -607,7 +607,7 @@ then
 	// flowRate
 	var f5_flow = (pFlowRate.state as DecimalType).doubleValue
 	if (pump_on && pSolarFluidType.state == 1 && rtFlow.state instanceof DecimalType) { 
-		f5_flow = (modelGlycolFlowRate.state as DecimalType).doubleValue
+		f5_flow = (rtFlow.state as DecimalType).doubleValue
 	}
 	val f6_dhw = (LatestDhwReturnTemp.state as DecimalType).doubleValue
 
