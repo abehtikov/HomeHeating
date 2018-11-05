@@ -5,11 +5,10 @@ Group gPresense	(All)
 Group Heating	(All)
 
 /* active groups */
-//Group:Switch:OR(ON, OFF) 		Heating 	"No. of Active Heatings [(%d)]" 	<heating> 			(All)
 Group:Number:AVG 				TempSensor	"Avg. Room Temperature [%.1f °C]" 	<temperature>	(gStatus)
 
 Group:Switch:OR(ON, OFF) 		WarmFloorValve	"Warm floor loops [(%d)]"			(All)
-Group:Switch:OR(ON, OFF)		ThermoValve		"Клапаны коллектора [%d / 4]"		(gStatus)
+Group:Switch:OR(ON, OFF)		ThermoValve		"Клапаны коллектора [%d / 3]"		(gStatus)
 Group:Number:SUM				ValveToggleCycle 	"Total valve toggle cycles [(%d)]"	(gStatus)
 Group:Switch:OR(ON, OFF)		RelaysGPIO		"Реле управления котлом и гребенкой [%d]"
 
@@ -20,18 +19,9 @@ Group gTrend	(gStatus) // check boiler trends during test period
 
 Group gSolar	(gStatus) // test solar pump & T-diff controller
 
-// initialize values after in a short delay after System startup.
+// initialize values in a short delay after System startup.
 Switch AfterStartup
 
-/* Test Modbus OVEN PLC */
-/*
-Group Modbus	(All)
-Number OvenStatus_MSB		"Register 0. status [(%d)]"			(Modbus)	{modbus="oven:0"}
-Number OvenStatus_LSB		"Register 2. Counter [(%d)]"		(Modbus)	{modbus="oven:2"}
-Switch OvenSwitch 			"Oven switch"						(Modbus)	{modbus="oven:1"}
-*/
-
-Switch SolarPump	"Solar pump [%s]"	(gSolar, RelaysGPIO)	// {gpio="pin:23 activelow:yes"} // Relay #4
 String PumpControl	"Pump status [%s]"	(gSolar)	{mqtt="<[cloud-mqtt:brodok/solar/pump:command:REGEX((on|off))]"}
 
 // Boiler trends
@@ -71,13 +61,10 @@ Number HeatingEventPeriod_m	"Event duration [%d min]" (gHeatingReq, gHEvent)	//{
 String HeatingEventRawData	"Heating event JSON [%s]" (gHeatingReq, gHEvent)	{mqtt="<[cloud-mqtt:brodok/heating/event:state:default]"}
 Number HeatingEventCountDown	"Event expires in [%d min]"	(gHeatingReq, gHEvent)
 Switch WarmFloorValveHelper
-/* Heating */
 
-// Towel heater valve is normally open. Switch position:ON is a default state. By default: OFF
-//Switch Heating_Valve_Towel_Warmer	 	"Towel warmer switch" 			<heating>	(Heating, ThermoValve, RelaysGPIO)	{gpio="pin:17"} // Relay #1
-//Number HV_Towel_Warmer_Toggle_Counter	"Towel warmer toggles [(%d)]"				(ValveToggleCycle)
-Switch Heating_Valve_LivingRoom		"Living room valve"	<heating>		(Heating, ThermoValve, RelaysGPIO, gPWM)	{gpio="pin:17"} // Relay #1
-//Number PWM_LivingRoom_Loop			"Living room PWM [%d %%]"	(Heating)		{mqtt="<[cloud-mqtt:brodok/heating/pwm/livingroom:state:default]"}
+/* Heating */
+// removed gpio pin 17 binding, due to reassignment to DHW relay
+Switch Heating_Valve_LivingRoom		"Living room valve"	<heating>		(Heating, ThermoValve, /*RelaysGPIO,*/ gPWM)	/*{gpio="pin:17"}*/ // Relay #1
 Switch LivingRoom_PWM_PV		"Living room PWM PV [%s]"	(Heating, gPWM)
 Number LivingRoom_PWM_SP		"Living room PWM duty cycle (setpoint) [%d %%]" (Heating, gPWM, gHEvent)	//{mqtt="<[cloud-mqtt:brodok/heating/event:state:JSONPATH($.pwm)]"}
 Switch LivingRoom_PWM_enabled	"Living room PWM enabled [%s]"			(Heating, gPWM) // enable only when LO_50R or HI event(s) is up
@@ -113,17 +100,6 @@ Switch Heating_Boiler_LO	"LO (50 °C) [%s]" 	<light>	(gBoiler)		{gpio="pin:10"} 
  * GPIO -> Optocoupler -> boiler WZ contact (COM-NO)
  */
 Switch Heating_Boiler_HI	"HI (70 °C) [%s]"	<light>	(gBoiler)		{gpio="pin:7"}
-
-// used to open/close all warm floor valves when boiler is in LO mode. If controller is failed, the default relay is closed (NC-COM are used)
-// Default state: ON
-/*
-Switch Heating_WF_Valves_LO_OFF		"230V Warm floor valves"		(Heating, WarmFloorValve, RelaysGPIO) 	{gpio="pin:27 activelow:no"}	// Relay #2
-*/
-
-/* 3 valid modes: OFF, LO, HI 
- * Deprecated. Use BoilerHeatingMode item. Off / HI / LO_R / LO_ALL
- */
-//String Heating_Boiler_Mode		"Boiler mode: [%s]"				(gBoiler)		{mqtt="<[cloud-mqtt:brodok/heating/boiler/mode:command:REGEX((HI|LO|Off))]"}
 
 /* Flow rate of heat medium. Depends on the number of open heating valves */
 Number 	Heating_FlowRate		"Total flow rate of heat medium [%.1f l/min]"		(gBoiler)
@@ -173,6 +149,8 @@ Number HeatCompensation		"Heat compensation [%d W]"			(gHeatingEQ, gHeatingParam
 Number ActiveBoilerHeatingElements	"Boiler's active heating elements [%d]"		(gBoiler, gHeatingEQ, gHeatingParams)
 String GoogleScriptURL "Spreadsheet update url: [%s]"							(gHeatingEQ) {mqtt="<[cloud-mqtt:brodok/heating/google-script-url:state:default]"}
 DateTime PowerDemandLastUpdate	"Current demand last update: [%1$tA,  %1$tH:%1$tM]"	(gHeatingEQ)
+// Heating season calculations are valid from October through to April
+Switch HeatingSeason	"Heating Season [%s]" (gHeatingEQ)
 
 Number Duration_ALL_40C		"Warm floors & radiators [%.2f h]"	(gHeatingEQ)
 Number Duration_R_70C		"Radiators 70C [%.2f h]"		(gHeatingEQ)
@@ -199,15 +177,8 @@ Number	MonthAverageTemp	"Средне-климатическая t месяца 
 
 Group gMovingAverage (gStatus)
 /* Moving average */
-/*
-Number ma24hTemp	"за последние 24 ч. [%.2f °C]"	<temperature>	(gWeather, gMovingAverage)
-Number ma48hTemp	"за последние 48 ч. [%.2f °C]"	<temperature>	(gWeather, gMovingAverage)
-String tempAccum24h	"Накоплено за 24 ч. [%s]"	(gStatus)
-String tempAccum48h	"Накоплено за 48 ч. [%s]"	(gStatus)
-*/
 Number ma24hRrdTemp	"RRD 24 ч. [%.2f °C]"	<temperature>	(gWeather, gMovingAverage)
 Number ma48hRrdTemp	"RRD 48 ч. [%.2f °C]"	<temperature>	(gWeather, gMovingAverage)
-//Number AmbientTempRrd "Rrd temperature [%.2f C]" (gWeather)
 
 
 /* NTP binding demo item */

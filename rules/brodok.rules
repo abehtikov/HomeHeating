@@ -7,8 +7,6 @@ import java.lang.Math
 import org.joda.time.Minutes
 
 var Number processUpdate = 0
-//var String Boiler_PrevState
-var String os_type = "linux" //"win"
 var Timer timer = null
 var Timer heatingBackToAuto = null // back to calendar control when user command expires
 var Timer warmFloorTimer = null // delayed start following  HI -> LO_ALL transition
@@ -61,18 +59,14 @@ then
 	callScript("init_solar")
 	
 	callScript("init_api_keys")
-	/*
-	postUpdate(TempSensor_Corridor, 20.0)
-	postUpdate(TempSensor_Kitchen, 21.0)
-	postUpdate(TempSensor_Bedroom, 19.0)
-	*/
+
 	logDebug("brodok.rules", "Set default valve position (open) of the living room loop.")
 	// open living room valve (Normally Open)
 	postUpdate(LivingRoom_PWM_PV, ON)
 	sendCommand(LivingRoom_PWM_enabled, OFF)
 	postUpdate(Heating_Valve_LivingRoom, ON)
-	postUpdate(LivingRoom_PWM_SP, 50)
-	postUpdate(Kitchen_PWM_SP, 80)
+	postUpdate(LivingRoom_PWM_SP, 25)
+	postUpdate(Kitchen_PWM_SP, 50)
 	postUpdate(Heating_Valve_Kitchen, OFF) // normally closed
 	postUpdate(Radiators_PWM_Cycle, 240) // 4h by default
 	postUpdate(Valve_Toggle_Deadband, 7) // minutes
@@ -459,35 +453,6 @@ then
 	}
 end
 
-/*
-rule "Average ambient temperature"
-when*/
-//	Time cron "0 0 */2 * * ?"
-/*
-then
-	var ma = Temperature.averageSince(now.minusHours(24), "rrd4j")
-	logInfo("temp.moving.average", "Moving average 24h: " + ma)
-	postUpdate(ma24hRrdTemp, ma)
-	
-	ma = Temperature.averageSince(now.minusHours(48), "rrd4j")
-	logInfo("temp.moving.average", "Moving average 48h: " + ma)
-	postUpdate(ma48hRrdTemp, ma) 
-end
-
-/*
- * Min and Max outside temperatures
- *
-rule "Update max and min temperatures"
-when
-	Item Temperature changed or
-	Time cron "0 0 0 * * ?" or
-	System started
-then	
-	postUpdate(Weather_Temp_Max, Temperature.maximumSince(now.toDateMidnight).state)
-	postUpdate(Weather_Temp_Min, Temperature.minimumSince(now.toDateMidnight).state)
-	postUpdate(Weather_LastUpdate, new DateTimeType())
-end
-*/
 
 
 rule "Convert Atm. Pressure units"

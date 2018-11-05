@@ -43,12 +43,6 @@ sitemap brodok label="Heating"
 		Group item=gPWM label="PWM settings" 
 		//Group item=gDailyMeters
 	}
-	
-	/*
-	Frame label="OVEN PLC test" {
-		Group item=Modbus label="Состояние и включатель"
-	}
-	*/
 
 	Frame label="Heating control" {
 		Group item=gHeatingReq label="Setup" icon="config" {
