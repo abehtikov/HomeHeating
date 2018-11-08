@@ -7,14 +7,14 @@ logInfo("startup", "initializing solar controller parameters...")
 
 postUpdate(tnDeltaTon, 10)
 postUpdate(tnDeltaToff, 2.5)
-postUpdate(tnLowPassAlpha, 0.25)
-postUpdate(tnRiseTCollector, 0.2) //deg/minute
+postUpdate(tnLowPassAlpha, 0.3)
+postUpdate(tnRiseTCollector, 0.3) //deg/minute
 postUpdate(tnTminHeatingSupport, 22)
-//postUpdate(pFlowRate, 52.7) // by default 60. override by MQTT persisted message
 
 postUpdate(DHW_Request, ON)
 postUpdate(HeatingSupportSw, OFF)
 postUpdate(LatestDhwReturnTemp, 40)
+postUpdate(DhwHeaterPower, 1.6) // 1600W
 
 postUpdate(pSystemVolume, 6)
 // glycol flow virt. analyzer model
@@ -23,10 +23,7 @@ sendCommand(pFlowModelB, 1.9006)
 sendCommand(pFlowModelC, 15.1169)
 sendCommand(pSolarFluidType, 1) // glycol
 
-postUpdate(pFlowRate, 52)
-//postUpdate(pHeatingCapacity, 4187) // water
-//postUpdate(pSolarFluidType, 0) // water
-//postUpdate(rtPowerDensity, 60)
+postUpdate(pFlowRate, 52) // l/h
 
 postUpdate(DischargeDHWRequest, OFF)
 postUpdate(HolidayModeSw, ON)
@@ -51,7 +48,5 @@ postUpdate(tnOverheatingTmin, 60)
 
 
 sendCommand(SolarPumpSw, OFF)
-
 sendCommand(ManualOperation, OFF)
-
 sendCommand(rtControllerStatus, "IDLE")

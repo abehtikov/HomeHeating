@@ -28,23 +28,3 @@ if (trBoilerTemp.state == Uninitialized || trBoilerTemp.state == Undefined) {
 		postUpdate(trBoilerTemp, temp)
 }
 
-/*
-// update trend living room valve
-if (Heating_Valve_LivingRoom.state == ON)
-	postUpdate(trValveLiv, 5)
-else
-	postUpdate(trValveLiv, 0)
-
-// update trend kitchen valve
-if (Heating_Valve_Kitchen.state == ON)
-	postUpdate(trValveKit, 15)
-else
-	postUpdate(trValveKit, 10)
-	
-// update trend kitchen valve proxy
-if (Kitchen_Valve_Proxy.state == ON)
-	postUpdate(trValveKProxy, 25)
-else
-	postUpdate(trValveKProxy, 20)
-*/
-

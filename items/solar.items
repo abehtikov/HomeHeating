@@ -8,6 +8,7 @@ Group gRuntime
 Group gSolarTrend
 Group gSunPosition	(gStatus)
 Group gDischarge	(gTuning)
+Group gDHW				(All)
 
 // Temperature sensors
 Number CollectorTemp	"Collector [%.1f °C]"	<temperature>	(gStatus, gRuntime, gSolarTrend)		{mqtt="<[cloud-mqtt:brodok/solar/collector_temp:state:default]"}
@@ -50,6 +51,18 @@ Number PumpOperationTodayHr		"Today [%.2f h]"					(gPump, gSolarStat)
 Number TotalPumpOperatingHr		"Total pump operation [%.2f h]"		(gPump, gSolarStat)
 // timestamp when the pump was ON last time
 DateTime	PumpLatestOperation	"Latest operation [%1$tA,  %1$tH:%1$tM]"	(gPump)
+
+// DHW items
+Switch DhwRelaySw	"DHW relay"		(gDHW, gRuntime, RelaysGPIO)	{gpio="pin:17"} // Relay #1
+Number DhwHeaterON	"DHW heater status"	(gDHW, gSolarTrend) // -10 - off, -5 - on
+Number DhwHeaterPower "DHW power [%.1f kW]" (gDHW) // ~1500-1700 W (8A * 190-220V)
+Number DhwDemandFactor "DHW demand factor [%.1f]" (gTuning, gDHW) // +/-20%
+// Demand is different each month. winter: 10 kwh/24h, summer: 6.5 kwh/24h
+Number	DhwDailyDemand	"DHW daily demand [%.1f kWh]"	(gStatus, gDHW)
+// request command to enable electric heater/DHW relay logic
+String 	DhwTriggerRequest	"DHW heater request [%s]"	(gDHW, gStatus)
+//Number DHWWeekendFactor "Weekend factor [%.1f]" (gTuning, gDHW) // +20% at weekend
+// bath request switch ??
 
 // Heating medium
 Number pHeatingCapacity	"Heating Capacity [%.0f J/(kg*K)]"	(gHeatingMedium)
@@ -98,8 +111,7 @@ Switch tnIceProtectionEnabled	"Enable protection" (gTuning)
 Number	kwhToday	"Today [%.2f kWh]" (gSolarStat)
 Number	kwhThisMonth	"This month [%.2f kWh]" (gSolarStat)
 Number	DhwChargeToday	"DHW solar supply today [%d %%]"	(gSolarStat)
-// Demand is different each month. winter: 10 kwh/24h, summer: 6.5 kwh/24h
-Number	DhwDailyDemand	"DHW daily demand [%.1f kWh]"	(gStatus) 
+
 
 
 // Runtime values
