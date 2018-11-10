@@ -18,7 +18,7 @@ var double filteredValue = -99 // workaround for null
 val int collectorAzimuthAngle = 230
 var int dischargeRequestTresholdTemp = 70
 var double dhwMaxToday = 0
-var double dhwMaxTcheck
+var double dhwMaxTcheck = 0
 
 var boolean pump_on = false
 var Timer dhwDischargeTimer = null
