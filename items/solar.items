@@ -54,6 +54,9 @@ DateTime	PumpLatestOperation	"Latest operation [%1$tA,  %1$tH:%1$tM]"	(gPump)
 
 // DHW items
 Switch DhwRelaySw	"DHW relay"		(gDHW, gRuntime, RelaysGPIO)	{gpio="pin:17"} // Relay #1
+// HeaterMode is responsible for high level DHW heating operation
+// OFF, BATH, LEGIONELLA PROTECT, VACATION, DISCHARGE, MIN_T target etc.
+String DhwHeaterMode "DHW heating mode [%s]" (gDHW, gRuntime) // proxy for DhwRelaySw
 Number DhwHeaterON	"DHW heater status"	(gDHW, gSolarTrend) // -10 - off, -5 - on
 Number DhwHeaterPower "DHW power [%.1f kW]" (gDHW) // ~1500-1700 W (8A * 190-220V)
 Number DhwDemandFactor "DHW demand factor [%.1f]" (gTuning, gDHW) // +/-20%

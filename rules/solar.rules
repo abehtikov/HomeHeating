@@ -18,6 +18,7 @@ var double filteredValue = -99 // workaround for null
 val int collectorAzimuthAngle = 230
 var int dischargeRequestTresholdTemp = 70
 var double dhwMaxToday = 0
+var double dhwMaxTcheck
 
 var boolean pump_on = false
 var Timer dhwDischargeTimer = null
@@ -54,13 +55,17 @@ then
 			val lastDhwTemp = (LatestDhwReturnTemp.state as DecimalType).doubleValue
 			tDelta = tColl - lastDhwTemp
 			
-		} else if (SolarPumpSw.state == ON /*&& rtControllerStatus.state != "FRP"*/) {
-			// CHARGE or DISCHARGE mode only
+		} else if (SolarPumpSw.state == ON) {
+			// whenever the pump is running, tReturn must follow DHW T
 			postUpdate(LatestDhwReturnTemp, tReturn)
 			
-			// record maximum dhw T today
-			if (tReturn > dhwMaxToday) {
+			// record maximum dhw T during collector charge operation
+			if (tReturn > dhwMaxToday && rtControllerStatus.state == "CH") {
 				dhwMaxToday = tReturn
+			}
+			// record maximum dhw T after electric heating
+			if (tReturn > dhwMaxTcheck && rtControllerStatus.state == "DHW_T") {
+				dhwMaxTcheck = tReturn
 			}
 			
 			if (pSolarFluidType.state == 1) { // propylene glycol
@@ -165,6 +170,8 @@ then
 			sendCommand(rtControllerStatus, "IDLE")
 		}
 	} else if (appState == "OVP") {
+		// no op
+	} else if (appState == "DHW_T") {
 		
 	} else { // appState == IDLE || appState == CH
 		
@@ -206,7 +213,7 @@ then
 				if (tDiff > 0 && collectorTder > tnRise) {
 					condition = 2 // T-Diff > 0 & T rise above threshold tuning value
 				}
-				if (collectorTder > tnSharpRise) {
+				if (collectorTder > tnSharpRise && tDiff > -10.0) {
 					condition = 3	// Sharp T rise despite of T-Diff value
 				}
 			} 
@@ -437,7 +444,7 @@ then
 		sendCommand(rtControllerStatus, "CH")
 	}
 	
-	if (!pump_on && (appState == "CH" || appState == "DIS" || appState == "FRP")) {
+	if (!pump_on && (appState == "CH" || appState == "DIS" || appState == "FRP" || appState == "DHW_T")) {
 		sendCommand(rtControllerStatus, "IDLE")	
 	}
 end
@@ -526,6 +533,22 @@ then
 				logInfo("solar", "DHW temperature: {} C.", tReturn)
 			}
 		}
+	}
+	
+	if (appState == "DHW_T") {
+		dhwMaxTcheck = 0.0 //reset T probe
+		sendCommand(SolarPumpSw, ON) // start the pump and track DHW outlet T
+		var timeout = 4
+		createTimer(now.plusMinutes(timeout),[|
+			postUpdate(SolarPumpSw, OFF)
+			// check is complete - copy max T into Latest Return Temperature
+			postUpdate(LatestDhwReturnTemp, dhwMaxTcheck)
+			logInfo("solar.dhw", "DHW_T checked: {} C.", dhwMaxTcheck)
+		])
+		// delay for 3 minutes more to prevent collector startup disturbance
+		createTimer(now.plusMinutes(timeout + 3), [| 
+				rtControllerStatus.postUpdate("IDLE")
+			])
 	}
 end
 
@@ -691,17 +714,22 @@ then
 	
 	if (DhwRelaySw.state == ON) {
 		val delta = 3.7 // 1.6 kW * ( 1hour / 3 ) * 7 deg/kWh
-		postUpdate(LatestDhwReturnTemp, oldValue + delta)
+		val newValue = oldValue + delta
+		postUpdate(LatestDhwReturnTemp, newValue)
 		
 		if (DhwTriggerRequest.state == "SHADOW" 
 			&& HeatingSeason.state == OFF
-			&& oldValue > 65.0
+			&& newValue > 65.0
 		) {
-			postUpdate(DhwTriggerRequest, "Off")
+			if (dhwMaxTcheck != 0.0) { // condition for reliable dhw T
+				postUpdate(DhwTriggerRequest, "Off")
+			} else {
+				logInfo("solar.dhw", "Perform DHW_T check. Expected T: {} C", newValue)
+				sendCommand(rtControllerStatus, "DHW_T")	
+			}
 		}
-	}
-	// Solar pump is off
-	else if (SolarPumpSw.state == OFF) {
+	
+	} else if (SolarPumpSw.state == OFF) { // Solar pump is off
 			
 		var int dhwDischargeFactor = 40 // 0.04 * delta / per 20 min
 		val double minTemp = 18.0
@@ -747,26 +775,27 @@ when
 	Item DhwTriggerRequest changed from Off
 then
 	// check preconditions
+	val dhwT = (LatestDhwReturnTemp.state as DecimalType).doubleValue
 	
 	if (HolidayModeSw.state == ON) {
 		logDebug("solar.dhw", "HolidayMode is ON :: Discarding DHW heating")
 		DhwTriggerRequest.postUpdate("Off")
-		return;
+		//return
 	}
 	
-	val dhwT = (LatestDhwReturnTemp.state as DecimalType).doubleValue
-	if (dhwT > 60.0) {
+	else if (dhwT > 60.0) {
 		logDebug("solar.dhw", "DHW T is {} C :: Discarding DHW heating", dhwT)
 		DhwTriggerRequest.postUpdate("Off")
-		return;
+		//return
 	}
 	
-	if (DischargeDHWRequest.state == ON) {
+	else if (DischargeDHWRequest.state == ON) {
 		logDebug("solar.dhw", "Discharge DHW request exists :: Discarding DHW heating")
 		DhwTriggerRequest.postUpdate("Off")
-		return;
+		//return
 	}
 	
+	else {
 	// calculate demand
 	val dailyDemand = (DhwDailyDemand.state as DecimalType).doubleValue
 	val kwhCollector = (kwhToday.state as DecimalType).doubleValue
@@ -782,35 +811,38 @@ then
 			dailyDemand, kwhCollector
 		)
 		DhwTriggerRequest.postUpdate("Off")
-		return;
+		//return
 	}
-		
-	var duration_mi = (60.0 * demandKwh / dhwHeaterPower).intValue
-	var dtRise = 7.0 * demandKwh
 	
-	/* moved 65C check into DHW discharge rule
-	val double dhwMaxT = 65.0
-	// when source = SHADOW in summer check we are not going to raise above 65C
-	if (DhwTriggerRequest.state == "SHADOW" && HeatingSeason.state == OFF) {
+	else {
+		var duration_mi = (60.0 * demandKwh / dhwHeaterPower).intValue
+		var dtRise = 7.0 * demandKwh
 		
-		val dhwExpectedT = dhwT + dtRise
-		if (dhwExpectedT > dhwMaxT) {
-			dtRise = dhwMaxT - dhwT
-			demandKwh = (dtRise / 7.0).doubleValue
-			val int vv = (demandKwh * 100).intValue
-			logInfo("solar.dhw", "Adjusted DHW demand on 65C target: {} kWh", vv / 100.0)
-			duration_mi = (60.0 * demandKwh / dhwHeaterPower).intValue
+		/* moved 65C check into DHW discharge rule
+		val double dhwMaxT = 65.0
+		// when source = SHADOW in summer check we are not going to raise above 65C
+		if (DhwTriggerRequest.state == "SHADOW" && HeatingSeason.state == OFF) {
+			
+			val dhwExpectedT = dhwT + dtRise
+			if (dhwExpectedT > dhwMaxT) {
+				dtRise = dhwMaxT - dhwT
+				demandKwh = (dtRise / 7.0).doubleValue
+				val int vv = (demandKwh * 100).intValue
+				logInfo("solar.dhw", "Adjusted DHW demand on 65C target: {} kWh", vv / 100.0)
+				duration_mi = (60.0 * demandKwh / dhwHeaterPower).intValue
+			}
+		}*/
+		
+		logInfo("solar.dhw", "DHW Relay ON for {} minutes, DHW T: {} C, dT +{} C", 
+			duration_mi, dhwT, dtRise.intValue
+		)
+		// trigger relay
+		DhwRelaySw.postUpdate(ON)
+		dhwRelayTimer = createTimer(now.plusMinutes(duration_mi), [|
+			postUpdate(DhwTriggerRequest, "Off")
+			])	
 		}
-	}*/
-	
-	logInfo("solar.dhw", "Switch DHT Relay ON. Duration: {} minutes, DHW T: {} C, dT +{} C", 
-		duration_mi, dhwT, dtRise.intValue
-	)
-	// trigger relay
-	DhwRelaySw.postUpdate(ON)
-	dhwRelayTimer = createTimer(now.plusMinutes(duration_mi), [|
-		postUpdate(DhwTriggerRequest, "Off")
-		])	
+	}
 end
 
 /*

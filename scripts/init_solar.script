@@ -27,6 +27,7 @@ postUpdate(pFlowRate, 52) // l/h
 
 postUpdate(DischargeDHWRequest, OFF)
 postUpdate(HolidayModeSw, ON)
+postUpdate(DhwTriggerRequest, "Off")
 
 postUpdate(kwhToday, 0)
 postUpdate(kwhThisMonth, 0)

@@ -53,6 +53,19 @@ sitemap solar label="Solar DHW"
 				Setpoint item=tnDischargePowerMin label="Power is below [%d W]" minValue=50 maxValue=125 step=25
 			}
 		}
+		Group item=gDHW label="DHW heater control" {
+			Frame label="DHW electric heating" {
+				Switch item=DhwRelaySw
+				//Text item=DhwTriggerRequest
+				Selection item=DhwTriggerRequest label="Operating Mode" mappings=[Off="Off", SHADOW="Summer", WINTLL="Winter", BATH="Bath request"]
+				Text item=HeatingSeason
+			}
+			Frame label="Demand and supply" {
+				Text item=DhwDailyDemand label="Daily demand"
+				Text item=DhwChargeToday
+				Text item=LatestDhwReturnTemp icon="temperature"
+			}
+		}
 		Group item=gHeatingMedium label="Heat transfer fluid" {
 			Frame label="Heating medium" {
 				Text item=SolarFluid
