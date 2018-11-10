@@ -844,7 +844,7 @@ then
 			duration_mi, dhwT, dtRise.intValue
 		)
 		// trigger relay
-		DhwRelaySw.postUpdate(ON)
+		DhwRelaySw.sendCommand(ON)
 		dhwRelayTimer = createTimer(now.plusMinutes(duration_mi), [|
 			postUpdate(DhwTriggerRequest, "Off")
 			])	
@@ -862,7 +862,7 @@ then
 	if (dhwRelayTimer != null) {
 		dhwRelayTimer.cancel()
 	}
-	DhwRelaySw.postUpdate(OFF)
+	DhwRelaySw.sendCommand(OFF)
 end
 
 
