@@ -61,7 +61,9 @@ sitemap solar label="Solar DHW"
 				Text item=HeatingSeason
 			}
 			Frame label="Demand and supply" {
-				Text item=DhwDailyDemand label="Daily demand"
+				Setpoint item=DhwDemandBaseLine label="Demand baseline [%d kWh]" minValue=4 maxValue=10 step=1
+				Text item=DhwDemandFactor
+				Text item=DhwDailyDemand label="Daily demand [%.2f kWh]"
 				Text item=DhwChargeToday
 				Text item=LatestDhwReturnTemp icon="temperature"
 			}

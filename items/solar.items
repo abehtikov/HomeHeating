@@ -59,8 +59,9 @@ Switch DhwRelaySw	"DHW relay"		(gDHW, gRuntime, RelaysGPIO)	{gpio="pin:17"} // R
 String DhwHeaterMode "DHW heating mode [%s]" (gDHW, gRuntime) // proxy for DhwRelaySw
 Number DhwHeaterON	"DHW heater status"	(gDHW, gSolarTrend) // -10 - off, -5 - on
 Number DhwHeaterPower "DHW power [%.1f kW]" (gDHW) // ~1500-1700 W (8A * 190-220V)
-Number DhwDemandFactor "DHW demand factor [%.1f]" (gTuning, gDHW) // +/-20%
+Number DhwDemandFactor "DHW demand factor [%.2f]" (gTuning, gDHW) // +/-20%
 // Demand is different each month. winter: 10 kwh/24h, summer: 6.5 kwh/24h
+Number	DhwDemandBaseLine "Daily baseline [%.0f kWh]" (gDHW, gStatus, gSolarStat)
 Number	DhwDailyDemand	"DHW daily demand [%.1f kWh]"	(gStatus, gDHW)
 // request command to enable electric heater/DHW relay logic
 String 	DhwTriggerRequest	"DHW heater request [%s]"	(gDHW, gStatus)

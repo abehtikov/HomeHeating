@@ -3,6 +3,10 @@
  * For ex. set war floor comfort hours
  */
 
+if (DhwDemandBaseLine.state == Uninitialized) {
+	DhwDemandBaseLine.sendCommand(8.0)
+}
+
 logDebug("warm.floor.comfort", "Value state: " + wd_mo_hh.state)
 
 if (wd_mo_hh.state == Uninitialized) {

@@ -312,17 +312,6 @@ then
 	postUpdate(DhwChargeToday, 0)
 	
 	dhwMaxToday = 0
-	
-	// adjust DHW demand for weekend
-	if (HolidayModeSw.state == OFF
-		&& HeatingSeason.state == ON
-		&& now.getDayOfWeek > 5 // Saturday or Sunday
-		&& SunnyTomorrow.state == OFF
-	) {
-		val weekendFactor = 1.2
-		val dhwDailyDemand = (DhwDailyDemand.state as DecimalType).doubleValue
-		postUpdate(DhwDailyDemand, dhwDailyDemand * weekendFactor)
-	}
 end
 
 
@@ -415,6 +404,24 @@ then
 		logInfo("solar", "DHW Discharge threshold T updated from {} to {}", dischargeRequestTresholdTemp, value)
 		dischargeRequestTresholdTemp = value
 	}
+end
+
+rule "Update DHW daily demand"
+when
+	Item DhwDemandBaseLine received update or
+	Item CollectorInShadow changed to ON
+then
+	val dayOfWeek = now.getDayOfWeek()
+	var demand = (DhwDemandBaseLine.state as DecimalType).doubleValue
+	val monthFactor = (DhwDemandFactor.state as DecimalType).doubleValue
+	demand = (demand * monthFactor).doubleValue
+
+	// Saturday or Sunday
+	if ((dayOfWeek == 5 || dayOfWeek == 6) && HeatingSeason.state == ON) {
+		demand = (demand * 1.1).doubleValue
+	}
+	DhwDailyDemand.sendCommand(demand)
+	//sendCommand(DhwDailyDemand, demand)
 end
 
 
@@ -852,10 +859,10 @@ rule "Main DHW Relay trigger OFF"
 when 
 	Item DhwTriggerRequest changed to Off
 then
-		if (dhwRelayTimer != null) {
-			dhwRelayTimer.cancel()
-		}
-		DhwRelaySw.postUpdate(OFF)
+	if (dhwRelayTimer != null) {
+		dhwRelayTimer.cancel()
+	}
+	DhwRelaySw.postUpdate(OFF)
 end
 
 
