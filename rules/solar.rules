@@ -721,13 +721,17 @@ then
 	val oldValue = (LatestDhwReturnTemp.state as DecimalType).doubleValue
 	
 	if (DhwRelaySw.state == ON) {
-		val delta = 3.7 // 1.6 kW * ( 1hour / 3 ) * 7 deg/kWh
-		val newValue = oldValue + delta
+		val double chargeFactor = 0.08
+		val maxTemp = 75.0
+		val delta = maxTemp - oldValue
+		
+		val tRise = delta * chargeFactor
+		val newValue = oldValue + tRise
 		postUpdate(LatestDhwReturnTemp, newValue)
 		
 		if (DhwTriggerRequest.state == "SHADOW" 
 			&& HeatingSeason.state == OFF
-			&& newValue > 65.0
+			&& newValue > 60.0
 		) {
 			if (dhwMaxTcheck != 0.0) { // condition for reliable dhw T
 				postUpdate(DhwTriggerRequest, "Off")
