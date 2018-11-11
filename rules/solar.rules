@@ -412,16 +412,17 @@ when
 	Item CollectorInShadow changed to ON
 then
 	val dayOfWeek = now.getDayOfWeek()
-	var demand = (DhwDemandBaseLine.state as DecimalType).doubleValue
+	val baseline = (DhwDemandBaseLine.state as DecimalType).doubleValue
 	val monthFactor = (DhwDemandFactor.state as DecimalType).doubleValue
-	demand = (demand * monthFactor).doubleValue
+	var weekendFactor = 1.0
 
+	// TODO incl. public holidays as well
 	// Saturday or Sunday
-	if ((dayOfWeek == 5 || dayOfWeek == 6) && HeatingSeason.state == ON) {
-		demand = (demand * 1.1).doubleValue
+	if ((dayOfWeek == 5 || dayOfWeek == 6) /*&& HeatingSeason.state == ON*/) {
+		weekendFactor = 1.1
 	}
+	var demand = baseline * monthFactor * weekendFactor
 	DhwDailyDemand.sendCommand(demand)
-	//sendCommand(DhwDailyDemand, demand)
 end
 
 
@@ -528,7 +529,7 @@ then
 	
 	if (appState == "IDLE") {
 	
-		// record latest DHW temperature when the following events occured:
+		// record latest DHW temperature when the following events occurred:
 		// DIS --> IDLE or CH --> IDLE
 		if (previousState == "CH" || previousState == "DIS") {
 				
@@ -547,14 +548,14 @@ then
 		sendCommand(SolarPumpSw, ON) // start the pump and track DHW outlet T
 		var timeout = 4
 		createTimer(now.plusMinutes(timeout),[|
-			postUpdate(SolarPumpSw, OFF)
+			sendCommand(SolarPumpSw, OFF)
 			// check is complete - copy max T into Latest Return Temperature
 			postUpdate(LatestDhwReturnTemp, dhwMaxTcheck)
 			logInfo("solar.dhw", "DHW_T checked: {} C.", dhwMaxTcheck)
 		])
 		// delay for 3 minutes more to prevent collector startup disturbance
 		createTimer(now.plusMinutes(timeout + 3), [| 
-				rtControllerStatus.postUpdate("IDLE")
+				rtControllerStatus.sendCommand("IDLE")
 			])
 	}
 end
@@ -709,9 +710,9 @@ end
 /*
  * 
  * DHW tank self discharge is ~ 1 kWh/24h 
- * Consumption is 6-8 kWh/24h
+ * Consumption is 6-10 kWh/24h
  * 
- * DHW tank capacity 120 liters
+ * DHW tank capacity 120 liters. 1kWh = 120 [ltr.] * 7 [delta T]
  */
 rule "DHW Storage self discharge" // 
 when
