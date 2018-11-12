@@ -12,6 +12,7 @@ var Timer heatingBackToAuto = null // back to calendar control when user command
 var Timer warmFloorTimer = null // delayed start following  HI -> LO_ALL transition
 var Timer kitchenTimer = null // kitchen underfloor heating loop timer
 var Timer coolDownTimer = null // boiler cool down timer to reduce temperature before LO_ALL event
+var Timer fullPowerTimer = null
 
 val DateTimeType expired = new DateTimeType()
 
@@ -382,6 +383,12 @@ then
 		sendCommand(LivingRoom_PWM_enabled, OFF)
 		sendCommand(Heating_Valve_LivingRoom, ON)
 		
+		// reset full power indicator
+		if (fullPowerTimer != null) {
+			fullPowerTimer.cancel()
+			fullPowerTimer = null
+		}
+		sendCommand(BoilerFullPowerMode, OFF)
 	} else {
 		logInfo("boiler.heating.mode", "Ignore command: " + newState)
 	}
@@ -647,11 +654,12 @@ then
 	}
 	
 	BoilerFullPowerMode.sendCommand(ON)
-	createTimer(now.plusMinutes(fullPowerTimeout), [|
+	fullPowerTimer = createTimer(now.plusMinutes(fullPowerTimeout), [|
 		BoilerFullPowerMode.sendCommand(OFF)
 	])
 	logDebug("heating", "Boiler running full power for {} minutes", fullPowerTimeout)
 end
+
 
 // solar pump remote control
 rule "Solar pump manual control"
