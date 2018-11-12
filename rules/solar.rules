@@ -881,6 +881,21 @@ then
 		postUpdate(DhwHeaterON, -10)
 end
 
+/*
+ * To avoid network load - prevent DHW heater 
+ * when boiler is running full power
+ */
+rule "Boiler priority over DHW"
+when
+	Item BoilerFullPowerMode changed
+then
+	if (BoilerFullPowerMode.state == ON) {
+		DhwRelaySw.sendCommand(OFF)
+	} else {
+		DhwRelaySw.sendCommand(ON)
+	}
+end
+
 
 rule "OpenWeatherMap conditions tomorrow"
 when 

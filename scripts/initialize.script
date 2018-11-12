@@ -6,6 +6,7 @@
 if (DhwDemandBaseLine.state == Uninitialized) {
 	DhwDemandBaseLine.sendCommand(8.0)
 }
+BoilerFullPowerMode.sendCommand(OFF)
 
 logDebug("warm.floor.comfort", "Value state: " + wd_mo_hh.state)
 
