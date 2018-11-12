@@ -725,7 +725,7 @@ then
 		val maxTemp = 75.0
 		val delta = maxTemp - oldValue
 		
-		val tRise = delta * chargeFactor
+		val tRise = ((delta * chargeFactor * 100.0).intValue) / 100.0
 		val newValue = oldValue + tRise
 		postUpdate(LatestDhwReturnTemp, newValue)
 		
@@ -760,19 +760,19 @@ then
 			logDebug("solar", "DHW storage T {} down by {} C. Holiday mode: {}",
 				oldValue, drop, HolidayModeSw.state
 			)
-			postUpdate(LatestDhwReturnTemp, oldValue - drop)	
-			
-			val lowLimit = 25.0
-			val azimuth = (SunAzimuth.state as DecimalType).intValue
-			
-			if (oldValue < lowLimit 
-				&& azimuth > 180
-				&& HeatingSeason.state == ON 
-				&& SunnyTomorrow.state == OFF
-			) {		
-				// trigger DHW electric heater request
-				sendCommand(DhwTriggerRequest, "WINTLL")
-			}	
+			postUpdate(LatestDhwReturnTemp, oldValue - drop)		
+		}
+		
+		val lowLimit = 25.0
+		val azimuth = (SunAzimuth.state as DecimalType).intValue
+		
+		if (oldValue < lowLimit 
+			&& azimuth > 180
+			&& HeatingSeason.state == ON 
+			&& SunnyTomorrow.state == OFF
+		) {		
+			// trigger DHW electric heater request
+			sendCommand(DhwTriggerRequest, "WINTLL")
 		}
 	}
 end
@@ -852,7 +852,11 @@ then
 		DhwRelaySw.sendCommand(ON)
 		dhwRelayTimer = createTimer(now.plusMinutes(duration_mi), [|
 			postUpdate(DhwTriggerRequest, "Off")
-			])	
+			logInfo("solar.dhw", 
+				"DHW request [{}] has expired. Estimated DHW T: {} C", 
+				previousState, LatestDhwReturnTemp.state
+			)
+		])	
 		}
 	}
 end
@@ -877,8 +881,10 @@ when
 then
 	if (DhwRelaySw.state == ON)
 		postUpdate(DhwHeaterON, -5)
-	else
+	else {
+		logInfo("solar.dhw", "DHW relay OFF")
 		postUpdate(DhwHeaterON, -10)
+	}
 end
 
 /*
@@ -889,10 +895,14 @@ rule "Boiler priority over DHW"
 when
 	Item BoilerFullPowerMode changed
 then
-	if (BoilerFullPowerMode.state == ON) {
-		DhwRelaySw.sendCommand(OFF)
-	} else {
-		DhwRelaySw.sendCommand(ON)
+	if (DhwTriggerRequest.state != "Off") {	
+		if (BoilerFullPowerMode.state == ON) {
+			logInfo("solar.dhw", "Boiler full power mode ON")
+			DhwRelaySw.sendCommand(OFF)
+		} else {
+			logInfo("solar.dhw", "Boiler full power mode OFF :: Switch DHW relay ON")
+			DhwRelaySw.sendCommand(ON)
+		}
 	}
 end
 
