@@ -851,11 +851,11 @@ then
 		// trigger relay
 		DhwRelaySw.sendCommand(ON)
 		dhwRelayTimer = createTimer(now.plusMinutes(duration_mi), [|
-			postUpdate(DhwTriggerRequest, "Off")
 			logInfo("solar.dhw", 
 				"DHW request [{}] has expired. Estimated DHW T: {} C", 
-				previousState, LatestDhwReturnTemp.state
+				DhwTriggerRequest.state, LatestDhwReturnTemp.state
 			)
+			postUpdate(DhwTriggerRequest, "Off")
 		])	
 		}
 	}
