@@ -57,7 +57,8 @@ String GHeatingCalendar	"Heating schedule" (gStatus)
 
 Number BoilerEventPower	"Boiler power [%.2f kW]"	(gBoiler, gHEvent)	//{mqtt="<[cloud-mqtt:brodok/heating/event:state:JSONPATH($.power)]"}
 Number HeatingEventPeriod_m	"Event duration [%d min]" (gHeatingReq, gHEvent)	//{mqtt="<[cloud-mqtt:brodok/heating/event:state:JSONPATH($.duration)]"}
-Switch BoilerFullPowerMode "Boiler running full power"  (gBoiler, gStatus)
+Switch BoilerFullPowerMode 	"Boiler running full power"  (gBoiler, gStatus)
+Number BoilerFullPowerTimeout "Full power timeout [%d min]" (gBoiler, gStatus)
 
 String HeatingEventRawData	"Heating event JSON [%s]" (gHeatingReq, gHEvent)	{mqtt="<[cloud-mqtt:brodok/heating/event:state:default]"}
 Number HeatingEventCountDown	"Event expires in [%d min]"	(gHeatingReq, gHEvent)

@@ -332,6 +332,10 @@ then
 		
 		sendCommand(LivingRoom_PWM_enabled, ON)
 		
+		if (previousState == "LO_ALL") {
+			postUpdate(BoilerFullPowerTimeout, 9)
+		}
+		
 	} else if (newState == "LO_50B") {
 		sendCommand(Heating_Boiler_HI, OFF)
 		sendCommand(Heating_Boiler_LO, ON)
@@ -339,6 +343,10 @@ then
 		
 		sendCommand(LivingRoom_PWM_enabled, OFF)
 		sendCommand(Heating_Valve_LivingRoom, OFF)
+				
+		if (previousState == "LO_ALL") {
+			postUpdate(BoilerFullPowerTimeout, 9)
+		}
 		
 	} else if (newState == "LO_ALL") {
 		sendCommand(Heating_Boiler_HI, OFF)
@@ -388,7 +396,7 @@ then
 			fullPowerTimer.cancel()
 			fullPowerTimer = null
 		}
-		sendCommand(BoilerFullPowerMode, OFF)
+		sendCommand(BoilerFullPowerMode, 0)
 	} else {
 		logInfo("boiler.heating.mode", "Ignore command: " + newState)
 	}
@@ -638,28 +646,55 @@ then
 end
 
 
+/*
+ * Experimental data: 3kW, flow 8l/h 
+ * 40C >> 50C : 8m55s
+ * 40C >> 64C : 50m
+ * TODO: 20C >> 50C : estimate: 15m
+ * 
+ * Upd: Nov 22
+ * 36sec of 3kW is required to heat 1deg up @ 6l/min (LO_B mode)
+ */
 rule "Boiler full power operation mode"
 when
-	Item BoilerHeatingMode changed from Off or
-	Item BoilerHeatingMode changed to LO_ALL
+	Item BoilerFullPowerTimeout received update
+then
+	val fullPowerTimeout = (BoilerFullPowerTimeout.state as DecimalType).intValue
+	if (fullPowerTimeout > 0) {
+	
+		BoilerFullPowerMode.sendCommand(ON)
+		if (fullPowerTimer != null) {
+			fullPowerTimer.cancel()
+			fullPowerTimer = null
+		}
+		fullPowerTimer = createTimer(now.plusMinutes(fullPowerTimeout), [|
+			BoilerFullPowerMode.sendCommand(OFF)
+		])
+		logDebug("heating", "Boiler running full power for {} minutes", fullPowerTimeout)
+		
+	} else { // zero timeout
+		BoilerFullPowerMode.sendCommand(OFF)
+	}
+end
+
+
+rule "Boiler full power timeout"
+when
+	Item Heating_Boiler_LO changed from OFF to ON
 then
 	var mode = BoilerHeatingMode.state
 	var int fullPowerTimeout // min
 	if (mode == "LO_ALL") {
 		fullPowerTimeout = 30
-	} else if (mode == "HI") {
-		fullPowerTimeout = 7
-	} else {
-		fullPowerTimeout = 5
+		if (HeatingEventPeriod_m.state instanceof DecimalType) {
+			fullPowerTimeout = 1 + (HeatingEventPeriod_m.state as DecimalType).intValue
+		}	
+	} else { // mode LO_R
+		fullPowerTimeout = 17
 	}
 	
-	BoilerFullPowerMode.sendCommand(ON)
-	fullPowerTimer = createTimer(now.plusMinutes(fullPowerTimeout), [|
-		BoilerFullPowerMode.sendCommand(OFF)
-	])
-	logDebug("heating", "Boiler running full power for {} minutes", fullPowerTimeout)
+	BoilerFullPowerTimeout.postUpdate(fullPowerTimeout)
 end
-
 
 // solar pump remote control
 rule "Solar pump manual control"
