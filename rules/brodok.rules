@@ -396,7 +396,7 @@ then
 			fullPowerTimer.cancel()
 			fullPowerTimer = null
 		}
-		sendCommand(BoilerFullPowerMode, 0)
+		BoilerFullPowerTimeout.postUpdate(0)
 	} else {
 		logInfo("boiler.heating.mode", "Ignore command: " + newState)
 	}
