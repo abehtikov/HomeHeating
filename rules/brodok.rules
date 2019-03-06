@@ -532,8 +532,9 @@ then
 	if (pwm_counter == cycle_len)
 		pwm_counter = 0	
 	
-	if (HeatingEventCountDown != Undefined && HeatingEventCountDown != Uninitialized) {
-		var int countDown = (HeatingEventCountDown.state as DecimalType).intValue
+	val countDownState = HeatingEventCountDown.state
+	if (countDownState != Undefined && countDownState != Uninitialized) {
+		var int countDown = (countDownState as DecimalType).intValue
 				
 		if (0 < countDown && countDown <= deadband) {
 			event_deadband = true
