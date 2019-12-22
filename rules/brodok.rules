@@ -310,7 +310,7 @@ then
 		+ "api_key=%1$s"
 		+ "&status=%2$s",
 		pThingSpeakApiKeyHeating.state, 
-		"Heating: " + newState.toString
+		"Heating%3A%20" + newState.toString
 		)
 	sendHttpGetRequest(url)
 	
