@@ -306,6 +306,14 @@ then
 	val newState = BoilerHeatingMode.state
 	logInfo("boiler.heating.mode", "Switch from {} to {}", previousState, newState)
 	
+	var url = String::format("https://api.thingspeak.com/update?"
+		+ "api_key=%1$s"
+		+ "&status=%2$s",
+		pThingSpeakApiKeyHeating.state, 
+		"Heating: " + newState.toString
+		)
+	sendHttpGetRequest(url)
+	
 	if (coolDownTimer != null) {
 		coolDownTimer.cancel()
 		coolDownTimer = null
