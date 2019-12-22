@@ -17,6 +17,8 @@ Number ReturnTemp		"Return	[%.1f °C]"		<temperature>	(gStatus, gRuntime, gSolar
 //Number OutsideTemp		"Ambient temperature [%.1f °C]"		<temperature>	(gStatus, gWeather)		{weather="locationId=home, type=temperature, property=current"}
 // Remember latest return temperature when solar pump was on @see PumpLastOperation
 Number	LatestDhwReturnTemp	"DHW Temperature [%.1f °C]"	<temperature>	(gStatus)	{mqtt="<[cloud-mqtt:brodok/solar/temp/dhw:state:default]"}
+// DHW boiler top temperature sensor DS18B20
+Number	DhwTemp		"DHW top sensor [%.1f °C]"	<temperature>	(gStatus, gRuntime, gSolarTrend)
 
 // Other Inputs
 Switch 	DHW_Request		"DHW request"		(gStatus) // not in use

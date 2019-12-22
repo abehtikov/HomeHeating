@@ -36,6 +36,16 @@ var double tfCollector = -99 // low pass filtered collector Temperature
 var double wattHour = 0.0
 
 /******** Common diff. controller rules   */
+rule "DHW Sensor update"
+when 
+	Item DhwTemp received update
+then
+	if (SolarPumpSw.state == OFF) {
+		val tDhw = (DhwTemp.state as DecimalType).doubleValue
+		postUpdate(LatestDhwReturnTemp, tDhw)
+	}
+end
+
 
 rule "Temperature Sensor update"
 when 
