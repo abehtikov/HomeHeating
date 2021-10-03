@@ -891,16 +891,43 @@ when
 	Item BoilerFullPowerMode changed
 then
 	if (DhwTriggerRequest.state != "Off") {	
-		if (BoilerFullPowerMode.state == ON) {
-			logInfo("solar.dhw", "Boiler full power mode ON")
+		val tDhw = (DhwTemp.state as DecimalType).doubleValue
+		// allow suspend DHW only when T > 35 C
+		if (BoilerFullPowerMode.state == ON && tDhw > 35.0) {
+			logInfo("solar.dhw", "Suspend DHW due to electric boiler full power mode")
 			DhwRelaySw.sendCommand(OFF)
-		} else {
+		} else if (BoilerFullPowerMode.state == OFF) {
 			logInfo("solar.dhw", "Boiler full power mode OFF :: Switch DHW relay ON")
 			DhwRelaySw.sendCommand(ON)
 		}
 	}
 end
 
+/*
+ * Force DHW target 35C at 7pm daily
+ * Ignore on Holidays
+ */
+rule "Force DHW target 40C by 8pm daily"
+when 
+	Time cron "10 */6 16-20 * * ?" // every 6 minutes from 4pm to 8pm
+then
+	if (HolidayModeSw.state == OFF && DhwTriggerRequest.state == "Off") {
+		
+		val hour = now.getHourOfDay() - 16
+		val tDhw = (DhwTemp.state as DecimalType).doubleValue
+		val min = now.getMinuteOfHour()
+		// magnitude is 1 deg up / every 12min. or 5 deg/hr
+		val totalMinRemaining = 240 - (min + hour * 60)
+		val expectedT = 40.0 - (totalMinRemaining / 12.0)
+		
+		if (tDhw < expectedT) {
+			logInfo("solar.dhw", "Rule: Target 40C @8pm, DHW T:{} С, expected T: {}", tDhw, expectedT)
+			// trigger DHW electric heater request
+			sendCommand(DhwTriggerRequest, "SHADOW")	
+		}
+		
+	}
+end
 
 rule "OpenWeatherMap conditions tomorrow"
 when 
