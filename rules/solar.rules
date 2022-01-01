@@ -667,7 +667,7 @@ then
 	}
 	val f6_dhw = (LatestDhwReturnTemp.state as DecimalType).doubleValue
 
-	var url = String::format("https://api.thingspeak.com/update?"
+	var url = String::format("https://api.thingspeak.com/update.json?"
 		+ "api_key=%9$s"
 		+ "&field1=%1$.2f"
 		+ "&field2=%2$.2f"
